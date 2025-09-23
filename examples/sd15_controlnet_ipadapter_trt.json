@@ -11,7 +11,7 @@
   "2": {
     "inputs": {
       "images": [
-        "5",
+        "43",
         0
       ]
     },
@@ -20,23 +20,21 @@
       "title": "Preview Image"
     }
   },
-  "3": {
+  "6": {
     "inputs": {
-      "config": [
-        "7",
-        0
-      ]
+      "image": "style1.jpg"
     },
-    "class_type": "ControlNetTRTModelLoader",
+    "class_type": "LoadImage",
     "_meta": {
-      "title": "ControlNet + TRT Model Loader"
+      "title": "Load Image"
     }
   },
-  "5": {
+  "43": {
     "inputs": {
-      "warmup_count": 50,
+      "prompt": "an anime render of a girl with purple hair, masterpiece, pixel art, PixArFK",
+      "negative_prompt": "blurry, low quality, distorted, 3d render",
       "model": [
-        "3",
+        "53",
         0
       ],
       "input_image": [
@@ -49,16 +47,19 @@
       "title": "ControlNet + TRT Streaming Sampler"
     }
   },
-  "6": {
+  "47": {
     "inputs": {
-      "image": "style1.jpg"
+      "config": [
+        "52",
+        0
+      ]
     },
-    "class_type": "LoadImage",
+    "class_type": "ControlNetTRTModelLoader",
     "_meta": {
-      "title": "Load Image"
+      "title": "ControlNet + TRT Model Loader"
     }
   },
-  "7": {
+  "52": {
     "inputs": {
       "model_id": "Lykon/dreamshaper-8",
       "controlnet_model_id": "lllyasviel/control_v11p_sd15_canny",
@@ -66,25 +67,31 @@
       "preprocessor": "canny",
       "low_threshold": 100,
       "high_threshold": 200,
-      "resolution": 512,
+      "height": 512,
+      "width": 512,
       "t_index_list": "20,35,45",
       "frame_buffer_size": 1,
-      "warmup": 50,
+      "warmup": 10,
       "acceleration": "tensorrt",
-      "do_add_noise": false,
       "use_denoising_batch": true,
-      "enable_similar_image_filter": true,
-      "similar_image_filter_threshold": 0.98,
-      "seed": 950,
+      "seed": 208,
       "num_inference_steps": 50,
       "use_lcm_lora": true,
-      "prompt": "an anime render of a girl with purple hair, masterpiece, pixel art, PixArFK,",
+      "prompt": "",
+      "negative_prompt": "blurry, low quality, distorted, 3d render",
+      "guidance_scale": 1.1,
       "ipadapter_model_path": "/workspace/ComfyUI/models/ipadapter/ip-adapter-plus_sd15.bin",
       "image_encoder_path": "/workspace/ComfyUI/models/ipadapter/image_encoder",
       "ipadapter_scale": 0.7,
       "ipadapter_enabled": true,
       "use_controlnet": true,
       "num_image_tokens": 16,
+      "engine_dir": "/workspace/ComfyUI/engines/",
+      "device": "cuda",
+      "dtype": "float16",
+      "use_tiny_vae": true,
+      "cfg_type": "self",
+      "delta": 0.7,
       "style_image": [
         "6",
         0
@@ -93,6 +100,21 @@
     "class_type": "ControlNetTRTConfig",
     "_meta": {
       "title": "ControlNet + TRT Config"
+    }
+  },
+  "53": {
+    "inputs": {
+      "style_image_path": "",
+      "ipadapter_scale": 0.1,
+      "preprocessor": "",
+      "model": [
+        "47",
+        0
+      ]
+    },
+    "class_type": "ControlNetTRTUpdateParams",
+    "_meta": {
+      "title": "ControlNet + TRT Update Params"
     }
   }
 }
