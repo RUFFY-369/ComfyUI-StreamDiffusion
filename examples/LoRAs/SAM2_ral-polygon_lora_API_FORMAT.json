@@ -1,0 +1,118 @@
+{
+  "27": {
+    "inputs": {
+      "image": "chillguy.png",
+      "upload": "image"
+    },
+    "class_type": "LoadImage"
+  },
+  "52": {
+    "inputs": {
+      "images": [
+        "73",
+        0
+      ]
+    },
+    "class_type": "PreviewImage"
+  },
+  "61": {
+    "inputs": {
+      "prompt": "alien on a futuristic spaceship in neon colors made of ral-polygon <lora:ral-polygon-sdxl:1>",
+      "negative_prompt": "Blurry details, low quality, cartoonish style, unrealistic features, disfigured face, excessive noise, messy background, overly dark shadows, unnatural proportions, dull or matte finish, extra limbs, distorted facial structure, overly dramatic lighting, grainy texture.",
+      "num_inference_steps": 50,
+      "guidance_scale": 1.2,
+      "delta": 1,
+      "stream_model": [
+        "79",
+        0
+      ],
+      "image": [
+        "27",
+        0
+      ]
+    },
+    "class_type": "StreamDiffusionSampler"
+  },
+  "73": {
+    "inputs": {
+      "x": 0,
+      "y": 0,
+      "resize_source": false,
+      "destination": [
+        "27",
+        0
+      ],
+      "source": [
+        "61",
+        0
+      ],
+      "mask": [
+        "75",
+        1
+      ]
+    },
+    "class_type": "ImageCompositeMasked"
+  },
+  "74": {
+    "inputs": {
+      "model": "sam2_hiera_tiny.pt",
+      "segmentor": "realtime",
+      "device": "cuda",
+      "precision": "fp16"
+    },
+    "class_type": "DownloadAndLoadSAM2RealtimeModel"
+  },
+  "75": {
+    "inputs": {
+      "coordinates_positive": "[[200,256]]",
+      "coordinates_negative": "",
+      "reset_tracking": false,
+      "output_automask": false,
+      "images": [
+        "27",
+        0
+      ],
+      "sam2_model": [
+        "74",
+        0
+      ]
+    },
+    "class_type": "Sam2RealtimeSegmentation"
+  },
+  "79": {
+    "inputs": {
+      "t_index_list": "39,35,30",
+      "mode": "img2img",
+      "width": 512,
+      "height": 512,
+      "acceleration": "none",
+      "frame_buffer_size": 1,
+      "use_tiny_vae": true,
+      "cfg_type": "self",
+      "use_lcm_lora": true,
+      "seed": 82634992,
+      "model": [
+        "80",
+        0
+      ],
+      "opt_lora_dict": [
+        "81",
+        0
+      ]
+    },
+    "class_type": "StreamDiffusionConfig"
+  },
+  "80": {
+    "inputs": {
+      "checkpoint": "kohaku-v2.1.safetensors"
+    },
+    "class_type": "StreamDiffusionCheckpointLoader"
+  },
+  "81": {
+    "inputs": {
+      "lora_name": "ral-polygon-sd15.safetensors",
+      "strength": 1
+    },
+    "class_type": "StreamDiffusionLoraLoader"
+  }
+}

@@ -1,0 +1,13 @@
+[build-system]
+requires = ["setuptools>=69.5.1", "wheel>=0.43.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+dependencies = [
+    "torch>=2.3.0",
+    "torchvision>=0.16.0",
+    "xformers",
+    "huggingface-hub>=0.25.0",
+    "diffusers>=0.31.0",
+    "protobuf>=4.25.3"
+]

@@ -1,0 +1,73 @@
+{
+  "147": {
+    "inputs": {
+      "image": "chillguy.png",
+      "upload": "image"
+    },
+    "class_type": "LoadImage"
+  },
+  "178": {
+    "inputs": {
+      "checkpoint": "lahmixMysterious_v20.safetensors"
+    },
+    "class_type": "StreamDiffusionCheckpointLoader"
+  },
+  "181": {
+    "inputs": {
+      "lora_name": "ral-alienzkin-sd15.safetensors",
+      "strength": 1
+    },
+    "class_type": "StreamDiffusionLoraLoader"
+  },
+  "182": {
+    "inputs": {
+      "prompt": "((masterpiece, best quality)) vibrant alien, uhd image,  blue and purple glowing ral alienzkin",
+      "negative_prompt": "",
+      "num_inference_steps": 50,
+      "guidance_scale": 1.2,
+      "delta": 1,
+      "stream_model": [
+        "183",
+        0
+      ],
+      "image": [
+        "147",
+        0
+      ]
+    },
+    "class_type": "StreamDiffusionSampler"
+  },
+  "183": {
+    "inputs": {
+      "t_index_list": "39,35,30",
+      "mode": "img2img",
+      "width": 512,
+      "height": 512,
+      "acceleration": "none",
+      "frame_buffer_size": 1,
+      "use_tiny_vae": true,
+      "cfg_type": "self",
+      "use_lcm_lora": true,
+      "seed": 97535790,
+      "model": [
+        "178",
+        0
+      ],
+      "opt_lora_dict": [
+        "181",
+        0
+      ]
+    },
+    "class_type": "StreamDiffusionConfig"
+  },
+  "184": {
+    "inputs": {
+      "filename_prefix": "ComfyUI",
+      "images": [
+        "182",
+        0
+      ]
+    },
+    "class_type": "SaveImage"
+  }
+}

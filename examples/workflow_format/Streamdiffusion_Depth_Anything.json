@@ -1,0 +1,426 @@
+{
+  "last_node_id": 76,
+  "last_link_id": 65,
+  "nodes": [
+    {
+      "id": 52,
+      "type": "PreviewImage",
+      "pos": [
+        1297,
+        553
+      ],
+      "size": [
+        210,
+        246
+      ],
+      "flags": {},
+      "order": 7,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "images",
+          "type": "IMAGE",
+          "link": 55
+        }
+      ],
+      "outputs": [],
+      "properties": {
+        "Node name for S&R": "PreviewImage"
+      },
+      "widgets_values": []
+    },
+    {
+      "id": 27,
+      "type": "LoadImage",
+      "pos": [
+        239,
+        539
+      ],
+      "size": [
+        315,
+        314
+      ],
+      "flags": {},
+      "order": 0,
+      "mode": 0,
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "IMAGE",
+          "type": "IMAGE",
+          "links": [
+            49,
+            50,
+            64
+          ],
+          "slot_index": 0
+        },
+        {
+          "name": "MASK",
+          "type": "MASK",
+          "links": null
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "LoadImage"
+      },
+      "widgets_values": [
+        "chillguy.png",
+        "image"
+      ]
+    },
+    {
+      "id": 72,
+      "type": "DepthAnythingTensorrt",
+      "pos": [
+        340,
+        190
+      ],
+      "size": [
+        315,
+        58
+      ],
+      "flags": {},
+      "order": 2,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "images",
+          "type": "IMAGE",
+          "link": 50
+        }
+      ],
+      "outputs": [
+        {
+          "name": "IMAGE",
+          "type": "IMAGE",
+          "links": [
+            51
+          ],
+          "slot_index": 0
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "DepthAnythingTensorrt"
+      },
+      "widgets_values": [
+        "depth_anything_v2_vitb-fp16.engine"
+      ]
+    },
+    {
+      "id": 69,
+      "type": "ImageToMask",
+      "pos": [
+        770,
+        140
+      ],
+      "size": [
+        315,
+        58
+      ],
+      "flags": {},
+      "order": 4,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "image",
+          "type": "IMAGE",
+          "link": 51
+        }
+      ],
+      "outputs": [
+        {
+          "name": "MASK",
+          "type": "MASK",
+          "links": [
+            52
+          ],
+          "slot_index": 0
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "ImageToMask"
+      },
+      "widgets_values": [
+        "red"
+      ]
+    },
+    {
+      "id": 75,
+      "type": "StreamDiffusionEngine",
+      "pos": [
+        720,
+        568
+      ],
+      "size": [
+        405.5999755859375,
+        338
+      ],
+      "flags": {},
+      "order": 3,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "model",
+          "type": "SDMODEL",
+          "link": 62
+        },
+        {
+          "name": "opt_lora_dict",
+          "type": "LORA_DICT",
+          "link": null,
+          "shape": 7
+        },
+        {
+          "name": "opt_advanced_config",
+          "type": "ADVANCED_CONFIG",
+          "link": null,
+          "shape": 7
+        }
+      ],
+      "outputs": [
+        {
+          "name": "STREAM_MODEL",
+          "type": "STREAM_MODEL",
+          "links": [
+            63
+          ],
+          "slot_index": 0
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "StreamDiffusionEngine"
+      },
+      "widgets_values": [
+        "39,35,30",
+        "img2img",
+        512,
+        512,
+        "tensorrt",
+        1,
+        true,
+        "self",
+        true,
+        95521537,
+        "randomize"
+      ]
+    },
+    {
+      "id": 76,
+      "type": "StreamDiffusionCheckpointLoader",
+      "pos": [
+        354,
+        335
+      ],
+      "size": [
+        390.5999755859375,
+        58
+      ],
+      "flags": {},
+      "order": 1,
+      "mode": 0,
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "SDMODEL",
+          "type": "SDMODEL",
+          "links": [
+            62
+          ],
+          "slot_index": 0
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "StreamDiffusionCheckpointLoader"
+      },
+      "widgets_values": [
+        "3dCartoonVision_v10.safetensors"
+      ]
+    },
+    {
+      "id": 61,
+      "type": "StreamDiffusionAccelerationSampler",
+      "pos": [
+        1312,
+        261
+      ],
+      "size": [
+        428.4000244140625,
+        218
+      ],
+      "flags": {},
+      "order": 5,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "stream_model",
+          "type": "STREAM_MODEL",
+          "link": 63
+        },
+        {
+          "name": "image",
+          "type": "IMAGE",
+          "link": 49,
+          "shape": 7
+        }
+      ],
+      "outputs": [
+        {
+          "name": "IMAGE",
+          "type": "IMAGE",
+          "links": [
+            65
+          ],
+          "slot_index": 0
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "StreamDiffusionAccelerationSampler"
+      },
+      "widgets_values": [
+        "bright colors",
+        "",
+        50,
+        1.2,
+        1
+      ]
+    },
+    {
+      "id": 73,
+      "type": "ImageCompositeMasked",
+      "pos": [
+        1873,
+        85
+      ],
+      "size": [
+        315,
+        146
+      ],
+      "flags": {},
+      "order": 6,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "destination",
+          "type": "IMAGE",
+          "link": 64
+        },
+        {
+          "name": "source",
+          "type": "IMAGE",
+          "link": 65
+        },
+        {
+          "name": "mask",
+          "type": "MASK",
+          "link": 52,
+          "shape": 7
+        }
+      ],
+      "outputs": [
+        {
+          "name": "IMAGE",
+          "type": "IMAGE",
+          "links": [
+            55
+          ],
+          "slot_index": 0
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "ImageCompositeMasked"
+      },
+      "widgets_values": [
+        0,
+        0,
+        false
+      ]
+    }
+  ],
+  "links": [
+    [
+      49,
+      27,
+      0,
+      61,
+      1,
+      "IMAGE"
+    ],
+    [
+      50,
+      27,
+      0,
+      72,
+      0,
+      "IMAGE"
+    ],
+    [
+      51,
+      72,
+      0,
+      69,
+      0,
+      "IMAGE"
+    ],
+    [
+      52,
+      69,
+      0,
+      73,
+      2,
+      "MASK"
+    ],
+    [
+      55,
+      73,
+      0,
+      52,
+      0,
+      "IMAGE"
+    ],
+    [
+      62,
+      76,
+      0,
+      75,
+      0,
+      "SDMODEL"
+    ],
+    [
+      63,
+      75,
+      0,
+      61,
+      0,
+      "STREAM_MODEL"
+    ],
+    [
+      64,
+      27,
+      0,
+      73,
+      0,
+      "IMAGE"
+    ],
+    [
+      65,
+      61,
+      0,
+      73,
+      1,
+      "IMAGE"
+    ]
+  ],
+  "groups": [],
+  "config": {},
+  "extra": {
+    "ds": {
+      "scale": 1.1167815779424888,
+      "offset": [
+        -431.5166818037454,
+        -104.44649606551036
+      ]
+    }
+  },
+  "version": 0.4
+}

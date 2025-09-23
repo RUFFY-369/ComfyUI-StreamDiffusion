@@ -1,0 +1,98 @@
+{
+  "1": {
+    "inputs": {
+      "image": "Chinese Woman.jpeg"
+    },
+    "class_type": "PrimaryInputLoadImage",
+    "_meta": {
+      "title": "Primary Input Image"
+    }
+  },
+  "2": {
+    "inputs": {
+      "images": [
+        "5",
+        0
+      ]
+    },
+    "class_type": "PreviewImage",
+    "_meta": {
+      "title": "Preview Image"
+    }
+  },
+  "3": {
+    "inputs": {
+      "config": [
+        "7",
+        0
+      ]
+    },
+    "class_type": "ControlNetTRTModelLoader",
+    "_meta": {
+      "title": "ControlNet + TRT Model Loader"
+    }
+  },
+  "5": {
+    "inputs": {
+      "warmup_count": 50,
+      "model": [
+        "3",
+        0
+      ],
+      "input_image": [
+        "1",
+        0
+      ]
+    },
+    "class_type": "ControlNetTRTStreamingSampler",
+    "_meta": {
+      "title": "ControlNet + TRT Streaming Sampler"
+    }
+  },
+  "6": {
+    "inputs": {
+      "image": "style1.jpg"
+    },
+    "class_type": "LoadImage",
+    "_meta": {
+      "title": "Load Image"
+    }
+  },
+  "7": {
+    "inputs": {
+      "model_id": "Lykon/dreamshaper-8",
+      "controlnet_model_id": "lllyasviel/control_v11p_sd15_canny",
+      "conditioning_scale": 0.29,
+      "preprocessor": "canny",
+      "low_threshold": 100,
+      "high_threshold": 200,
+      "resolution": 512,
+      "t_index_list": "20,35,45",
+      "frame_buffer_size": 1,
+      "warmup": 50,
+      "acceleration": "tensorrt",
+      "do_add_noise": false,
+      "use_denoising_batch": true,
+      "enable_similar_image_filter": true,
+      "similar_image_filter_threshold": 0.98,
+      "seed": 950,
+      "num_inference_steps": 50,
+      "use_lcm_lora": true,
+      "prompt": "an anime render of a girl with purple hair, masterpiece, pixel art, PixArFK,",
+      "ipadapter_model_path": "/workspace/ComfyUI/models/ipadapter/ip-adapter-plus_sd15.bin",
+      "image_encoder_path": "/workspace/ComfyUI/models/ipadapter/image_encoder",
+      "ipadapter_scale": 0.7,
+      "ipadapter_enabled": true,
+      "use_controlnet": true,
+      "num_image_tokens": 16,
+      "style_image": [
+        "6",
+        0
+      ]
+    },
+    "class_type": "ControlNetTRTConfig",
+    "_meta": {
+      "title": "ControlNet + TRT Config"
+    }
+  }
+}

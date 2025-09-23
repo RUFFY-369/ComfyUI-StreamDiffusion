@@ -1,0 +1,62 @@
+{
+  "147": {
+    "inputs": {
+      "image": "ryan.png",
+      "upload": "image"
+    },
+    "class_type": "LoadImage"
+  },
+  "182": {
+    "inputs": {
+      "t_index_list": "39,35,30",
+      "mode": "img2img",
+      "width": 512,
+      "height": 512,
+      "acceleration": "none",
+      "frame_buffer_size": 1,
+      "use_tiny_vae": true,
+      "cfg_type": "self",
+      "use_lcm_lora": true,
+      "seed": 2,
+      "model": [
+        "183",
+        0
+      ]
+    },
+    "class_type": "StreamDiffusionConfig"
+  },
+  "183": {
+    "inputs": {
+      "checkpoint": "sd_turbo.safetensors"
+    },
+    "class_type": "StreamDiffusionCheckpointLoader"
+  },
+  "184": {
+    "inputs": {
+      "prompt": "",
+      "negative_prompt": "",
+      "num_inference_steps": 50,
+      "guidance_scale": 1.2,
+      "delta": 1,
+      "stream_model": [
+        "182",
+        0
+      ],
+      "image": [
+        "147",
+        0
+      ]
+    },
+    "class_type": "StreamDiffusionSampler"
+  },
+  "185": {
+    "inputs": {
+      "filename_prefix": "ComfyUI",
+      "images": [
+        "184",
+        0
+      ]
+    },
+    "class_type": "SaveImage"
+  }
+}

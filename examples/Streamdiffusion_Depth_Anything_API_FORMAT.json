@@ -1,0 +1,101 @@
+{
+  "27": {
+    "inputs": {
+      "image": "chillguy.png",
+      "upload": "image"
+    },
+    "class_type": "LoadImage"
+  },
+  "52": {
+    "inputs": {
+      "images": [
+        "73",
+        0
+      ]
+    },
+    "class_type": "PreviewImage"
+  },
+  "61": {
+    "inputs": {
+      "prompt": "bright colors",
+      "negative_prompt": "",
+      "num_inference_steps": 50,
+      "guidance_scale": 1.2,
+      "delta": 1,
+      "stream_model": [
+        "75",
+        0
+      ],
+      "image": [
+        "27",
+        0
+      ]
+    },
+    "class_type": "StreamDiffusionSampler"
+  },
+  "69": {
+    "inputs": {
+      "channel": "red",
+      "image": [
+        "72",
+        0
+      ]
+    },
+    "class_type": "ImageToMask"
+  },
+  "72": {
+    "inputs": {
+      "engine": "depth_anything_v2_vitb-fp16.engine",
+      "images": [
+        "27",
+        0
+      ]
+    },
+    "class_type": "DepthAnythingTensorrt"
+  },
+  "73": {
+    "inputs": {
+      "x": 0,
+      "y": 0,
+      "resize_source": false,
+      "destination": [
+        "27",
+        0
+      ],
+      "source": [
+        "61",
+        0
+      ],
+      "mask": [
+        "69",
+        0
+      ]
+    },
+    "class_type": "ImageCompositeMasked"
+  },
+  "75": {
+    "inputs": {
+      "t_index_list": "39,35,30",
+      "mode": "img2img",
+      "width": 512,
+      "height": 512,
+      "acceleration": "none",
+      "frame_buffer_size": 1,
+      "use_tiny_vae": true,
+      "cfg_type": "self",
+      "use_lcm_lora": true,
+      "seed": 95521537,
+      "model": [
+        "76",
+        0
+      ]
+    },
+    "class_type": "StreamDiffusionConfig"
+  },
+  "76": {
+    "inputs": {
+      "checkpoint": "3dCartoonVision_v10.safetensors"
+    },
+    "class_type": "StreamDiffusionCheckpointLoader"
+  }
+}
