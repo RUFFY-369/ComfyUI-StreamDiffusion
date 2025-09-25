@@ -154,11 +154,28 @@ class ControlNetTRTModelLoader:
 class ControlNetTRTUpdateParams:
     @classmethod
     def INPUT_TYPES(cls):
+        template_json = 'e.g. ["prompt1", "prompt2"] or [["prompt1", 1.0], ["prompt2", 0.5]]'
+        template_csv = 'e.g. prompt1, prompt2'
         return {
             "required": {
                 "model": ("MODEL", {"tooltip": "Live model tuple (wrapper, config, resolution)."}),
             },
             "optional": {
+                "prompt_list": ("STRING", {"tooltip": f"List of (prompt, weight) tuples as JSON or comma-separated. {template_json}; {template_csv}"}),
+                "prompt_interpolation_method": ("STRING", {"default": "slerp", "tooltip": "Prompt interpolation method."}),
+                "seed_list": ("STRING", {"tooltip": f"List of (seed, weight) tuples as JSON or comma-separated. e.g. [42, 43] or [[42, 1.0], [43, 0.5]]; 42, 43"}),
+                "seed_interpolation_method": ("STRING", {"default": "linear", "tooltip": "Seed interpolation method."}),
+                "guidance_scale": ("FLOAT", {"tooltip": "Guidance scale."}),
+                "num_inference_steps": ("INT", {"tooltip": "Number of inference steps."}),
+                "delta": ("FLOAT", {"tooltip": "Delta parameter."}),
+                "t_index_list": ("STRING", {"tooltip": f"Timesteps list as JSON or comma-separated. e.g. [20,35,45]; 20,35,45"}),
+                "ipadapter_config": ("DICT", {"tooltip": "Full IPAdapter config dict."}),
+                "ipadapter_enabled": ("BOOLEAN", {"default": None, "tooltip": "Enable or disable IPAdapter conditioning."}),
+                "controlnet_enabled": ("BOOLEAN", {"default": None, "tooltip": "Enable or disable ControlNet conditioning."}),
+                "image_preprocessing_config": ("STRING", {"tooltip": f"Image preprocessing config as JSON or comma-separated. e.g. [\"resize\", \"normalize\"]; resize, normalize"}),
+                "image_postprocessing_config": ("STRING", {"tooltip": f"Image postprocessing config as JSON or comma-separated. e.g. [\"clip\"]; clip"}),
+                "latent_preprocessing_config": ("STRING", {"tooltip": f"Latent preprocessing config as JSON or comma-separated. e.g. [\"scale\"]; scale"}),
+                "latent_postprocessing_config": ("STRING", {"tooltip": f"Latent postprocessing config as JSON or comma-separated. e.g. [\"quantize\"]; quantize"}),
                 "style_image_path": ("STRING", {"tooltip": "File path to new style image for IPAdapter."}),
                 "ipadapter_scale": ("FLOAT", {"tooltip": "New IPAdapter scale."}),
                 "preprocessor": ("STRING", {"tooltip": "New ControlNet preprocessor type."}),
@@ -171,70 +188,69 @@ class ControlNetTRTUpdateParams:
     CATEGORY = "ControlNet+TRT"
     DESCRIPTION = "Dynamically update IPAdapter, ControlNet preprocessor, and prompt in the live model in one node."
 
-    def update_params(self, model, style_image_path=None, ipadapter_scale=None, preprocessor=None, preprocessor_params=None):
+    def update_params(self, model, prompt_list=None, prompt_interpolation_method=None, seed_list=None, seed_interpolation_method=None, guidance_scale=None, num_inference_steps=None, delta=None, t_index_list=None, ipadapter_config=None, ipadapter_enabled=None, controlnet_enabled=None, image_preprocessing_config=None, image_postprocessing_config=None, latent_preprocessing_config=None, latent_postprocessing_config=None, style_image_path=None, ipadapter_scale=None, preprocessor=None, preprocessor_params=None):
+        import json
         wrapper, config, (height, width) = model
-        # Update IPAdapter style image using demo logic
-        if style_image_path is not None:
-            import os
-            import torch
-            import numpy as np
-            from PIL import Image
-            import traceback
-            if os.path.exists(style_image_path):
-                print(f"[ControlNetTRTUpdateParams] Found style_image_path: {style_image_path}")
-                style_image = Image.open(style_image_path).convert("RGB")
-                style_tensor = torch.from_numpy(np.array(style_image)).permute(2, 0, 1).float() / 255.0
-                style_tensor = style_tensor.unsqueeze(0)  # Add batch dimension
-                print(f"[DEBUG] style_tensor type: {type(style_tensor)}, shape: {getattr(style_tensor, 'shape', None)}")
-                # Check preprocessor registration
-                param_updater = getattr(wrapper.stream, '_param_updater', None)
-                if param_updater is not None:
-                    preprocessors = getattr(param_updater, '_embedding_preprocessors', [])
-                    print(f"[DEBUG] Registered preprocessors: {[(type(p).__name__, k) for p, k in preprocessors]}")
-                    found = any(key == 'ipadapter_main' for _, key in preprocessors)
-                    print(f"[DEBUG] 'ipadapter_main' registered: {found}")
-                else:
-                    print("[DEBUG] param_updater is None!")
-                # Check orchestrator
-                orchestrator = getattr(param_updater, '_embedding_orchestrator', None) if param_updater else None
-                print(f"[DEBUG] Orchestrator type: {type(orchestrator)}")
-                # Try updating style image
+        update_kwargs = {}
+        def parse_list(val):
+            if val is None:
+                return None
+            if isinstance(val, str):
                 try:
-                    if hasattr(wrapper, "update_style_image"):
-                        print(f"[ControlNetTRTUpdateParams] Updating IPAdapter style image via update_style_image (demo logic)")
-                        wrapper.update_style_image(style_tensor, is_stream=True)
-                        # Force prompt re-encoding if possible
-                        if hasattr(wrapper, "get_stream_state") and hasattr(wrapper, "update_prompt"):
-                            state = wrapper.get_stream_state()
-                            current_prompts = state.get('prompt_list', [])
-                            if current_prompts:
-                                wrapper.update_prompt(current_prompts, prompt_interpolation_method="slerp")
-                        print("[DEBUG] update_style_image call succeeded.")
-                    if "ipadapters" in config and len(config["ipadapters"]):
-                        config["ipadapters"][0]["style_image"] = style_tensor
-                except Exception as e:
-                    print(f"[ERROR] update_style_image failed: {e}")
-                    traceback.print_exc()
-            else:
-                print(f"[ControlNetTRTUpdateParams] style_image_path does not exist: {style_image_path}")
-        # Update IPAdapter scale
+                    return json.loads(val)
+                except Exception:
+                    return [x.strip() for x in val.split(",") if x.strip()]
+            return val
+
+        if prompt_list is not None:
+            update_kwargs["prompt_list"] = parse_list(prompt_list)
+        if prompt_interpolation_method is not None:
+            update_kwargs["prompt_interpolation_method"] = prompt_interpolation_method
+        if seed_list is not None:
+            update_kwargs["seed_list"] = parse_list(seed_list)
+        if seed_interpolation_method is not None:
+            update_kwargs["seed_interpolation_method"] = seed_interpolation_method
+        if guidance_scale is not None:
+            update_kwargs["guidance_scale"] = guidance_scale
+        if num_inference_steps is not None:
+            update_kwargs["num_inference_steps"] = num_inference_steps
+        if delta is not None:
+            update_kwargs["delta"] = delta
+        if t_index_list is not None:
+            update_kwargs["t_index_list"] = [int(x) for x in parse_list(t_index_list)]
+        if ipadapter_config is not None:
+            update_kwargs["ipadapter_config"] = ipadapter_config
+        if ipadapter_enabled is not None:
+            if "ipadapters" in config and len(config["ipadapters"]):
+                config["ipadapters"][0]["enabled"] = bool(ipadapter_enabled)
+                update_kwargs["ipadapter_config"] = config["ipadapters"][0]
+        if controlnet_enabled is not None:
+            if "controlnets" in config and len(config["controlnets"]):
+                config["controlnets"][0]["enabled"] = bool(controlnet_enabled)
+                update_kwargs["controlnet_config"] = config["controlnets"]
+        if image_preprocessing_config is not None:
+            update_kwargs["image_preprocessing_config"] = parse_list(image_preprocessing_config)
+        if image_postprocessing_config is not None:
+            update_kwargs["image_postprocessing_config"] = parse_list(image_postprocessing_config)
+        if latent_preprocessing_config is not None:
+            update_kwargs["latent_preprocessing_config"] = parse_list(latent_preprocessing_config)
+        if latent_postprocessing_config is not None:
+            update_kwargs["latent_postprocessing_config"] = parse_list(latent_postprocessing_config)
         if ipadapter_scale is not None:
-            if hasattr(wrapper, "update_stream_params"):
-                wrapper.update_stream_params(ipadapter_config={"scale": ipadapter_scale})
+            update_kwargs["ipadapter_config"] = {"scale": ipadapter_scale}
             if "ipadapters" in config and len(config["ipadapters"]):
                 config["ipadapters"][0]["scale"] = ipadapter_scale
-        # Update ControlNet preprocessor
-        if preprocessor is not None:
-            if hasattr(wrapper, "update_controlnet_preprocessor"):
-                wrapper.update_controlnet_preprocessor(preprocessor)
-            if "controlnets" in config and len(config["controlnets"]):
-                config["controlnets"][0]["preprocessor"] = preprocessor
-        # Update ControlNet preprocessor params
-        if preprocessor_params is not None:
-            if hasattr(wrapper, "update_controlnet_preprocessor_params"):
-                wrapper.update_controlnet_preprocessor_params(preprocessor_params)
-            if "controlnets" in config and len(config["controlnets"]):
-                config["controlnets"][0]["preprocessor_params"].update(preprocessor_params)
+        if preprocessor is not None or preprocessor_params is not None:
+            controlnet_config = config.get("controlnets", []).copy()
+            if controlnet_config and isinstance(controlnet_config[0], dict):
+                if preprocessor is not None:
+                    controlnet_config[0]["preprocessor"] = preprocessor
+                if preprocessor_params is not None:
+                    controlnet_config[0]["preprocessor_params"].update(preprocessor_params)
+                update_kwargs["controlnet_config"] = controlnet_config
+                config["controlnets"] = controlnet_config
+        if update_kwargs and hasattr(wrapper, "update_stream_params"):
+            wrapper.update_stream_params(**update_kwargs)
         return ((wrapper, config, (height, width)),)
 
 
