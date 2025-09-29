@@ -188,7 +188,7 @@ class ControlNetTRTUpdateParams:
     CATEGORY = "ControlNet+TRT"
     DESCRIPTION = "Dynamically update IPAdapter, ControlNet preprocessor, and prompt in the live model in one node."
 
-    def update_params(self, model, prompt_list=None, prompt_interpolation_method=None, seed_list=None, seed_interpolation_method=None, guidance_scale=None, num_inference_steps=None, delta=None, t_index_list=None, ipadapter_config=None, ipadapter_enabled=None, controlnet_enabled=None, image_preprocessing_config=None, image_postprocessing_config=None, latent_preprocessing_config=None, latent_postprocessing_config=None, style_image_path=None, ipadapter_scale=None, preprocessor=None, preprocessor_params=None):
+    def update_params(self, model, prompt_list=None, prompt_interpolation_method=None, seed_list=None, seed_interpolation_method=None, guidance_scale=None, num_inference_steps=None, delta=None, t_index_list=None, ipadapter_enabled=None, controlnet_enabled=None, image_preprocessing_config=None, image_postprocessing_config=None, latent_preprocessing_config=None, latent_postprocessing_config=None, style_image_path=None, ipadapter_scale=None, preprocessor=None, preprocessor_params=None):
         import json
         wrapper, config, (height, width) = model
         update_kwargs = {}
@@ -218,17 +218,18 @@ class ControlNetTRTUpdateParams:
             update_kwargs["delta"] = delta
         if t_index_list is not None:
             update_kwargs["t_index_list"] = [int(x) for x in parse_list(t_index_list)]
-        if ipadapter_config is not None:
-            update_kwargs["ipadapter_config"] = ipadapter_config
-        if ipadapter_enabled is not None:
-            update_kwargs["ipadapter_config"] = {"enabled": bool(ipadapter_enabled)}
-            if "ipadapters" in config and len(config["ipadapters"]):
-                config["ipadapters"][0]["enabled"] = bool(ipadapter_enabled)
-        if controlnet_enabled is not None:
-            if "controlnets" in config and len(config["controlnets"]):
-                config["controlnets"][0]["enabled"] = bool(controlnet_enabled)
-                # Always pass the full config list for live update
-                update_kwargs["controlnet_config"] = [dict(c) for c in config["controlnets"]]
+        if ipadapter_scale is not None or ipadapter_enabled is not None:
+            ip_cfg = {}
+            if ipadapter_scale is not None:
+                ip_cfg["scale"] = ipadapter_scale
+                if "ipadapters" in config and len(config["ipadapters"]):
+                    config["ipadapters"][0]["scale"] = ipadapter_scale
+            if ipadapter_enabled is not None:
+                ip_cfg["enabled"] = ipadapter_enabled
+                if "ipadapters" in config and len(config["ipadapters"]):
+                    config["ipadapters"][0]["enabled"] = ipadapter_enabled
+            update_kwargs["ipadapter_config"] = ip_cfg
+        
         if image_preprocessing_config is not None:
             update_kwargs["image_preprocessing_config"] = parse_list(image_preprocessing_config)
         if image_postprocessing_config is not None:
@@ -237,17 +238,22 @@ class ControlNetTRTUpdateParams:
             update_kwargs["latent_preprocessing_config"] = parse_list(latent_preprocessing_config)
         if latent_postprocessing_config is not None:
             update_kwargs["latent_postprocessing_config"] = parse_list(latent_postprocessing_config)
-        if ipadapter_scale is not None:
-            update_kwargs["ipadapter_config"] = {"scale": ipadapter_scale}
-            if "ipadapters" in config and len(config["ipadapters"]):
-                config["ipadapters"][0]["scale"] = ipadapter_scale
-        if preprocessor is not None or preprocessor_params is not None:
-            controlnet_config = config.get("controlnets", []).copy()
-            if controlnet_config and isinstance(controlnet_config[0], dict):
-                if preprocessor is not None:
-                    controlnet_config[0]["preprocessor"] = preprocessor
-                if preprocessor_params is not None:
-                    controlnet_config[0]["preprocessor_params"].update(preprocessor_params)
+        
+        
+        # Combine logic for updating controlnet_config so update_kwargs["controlnet_config"] is only set once
+        controlnet_config_update_needed = False
+        controlnet_config = config.get("controlnets", []).copy()
+        if controlnet_config and isinstance(controlnet_config[0], dict):
+            if controlnet_enabled is not None:
+                controlnet_config[0]["enabled"] = bool(controlnet_enabled)
+                controlnet_config_update_needed = True
+            if preprocessor is not None:
+                controlnet_config[0]["preprocessor"] = preprocessor
+                controlnet_config_update_needed = True
+            if preprocessor_params is not None:
+                controlnet_config[0]["preprocessor_params"].update(preprocessor_params)
+                controlnet_config_update_needed = True
+            if controlnet_config_update_needed:
                 update_kwargs["controlnet_config"] = controlnet_config
                 config["controlnets"] = controlnet_config
         if update_kwargs and hasattr(wrapper, "update_stream_params"):
