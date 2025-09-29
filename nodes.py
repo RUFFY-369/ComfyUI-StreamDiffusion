@@ -221,13 +221,14 @@ class ControlNetTRTUpdateParams:
         if ipadapter_config is not None:
             update_kwargs["ipadapter_config"] = ipadapter_config
         if ipadapter_enabled is not None:
+            update_kwargs["ipadapter_config"] = {"enabled": bool(ipadapter_enabled)}
             if "ipadapters" in config and len(config["ipadapters"]):
                 config["ipadapters"][0]["enabled"] = bool(ipadapter_enabled)
-                update_kwargs["ipadapter_config"] = config["ipadapters"][0]
         if controlnet_enabled is not None:
             if "controlnets" in config and len(config["controlnets"]):
                 config["controlnets"][0]["enabled"] = bool(controlnet_enabled)
-                update_kwargs["controlnet_config"] = config["controlnets"]
+                # Always pass the full config list for live update
+                update_kwargs["controlnet_config"] = [dict(c) for c in config["controlnets"]]
         if image_preprocessing_config is not None:
             update_kwargs["image_preprocessing_config"] = parse_list(image_preprocessing_config)
         if image_postprocessing_config is not None:
