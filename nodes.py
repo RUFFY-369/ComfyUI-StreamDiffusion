@@ -169,7 +169,6 @@ class ControlNetTRTUpdateParams:
                 "num_inference_steps": ("INT", {"tooltip": "Number of inference steps."}),
                 "delta": ("FLOAT", {"tooltip": "Delta parameter."}),
                 "t_index_list": ("STRING", {"tooltip": f"Timesteps list as JSON or comma-separated. e.g. [20,35,45]; 20,35,45"}),
-                "ipadapter_config": ("DICT", {"tooltip": "Full IPAdapter config dict."}),
                 "ipadapter_enabled": ("BOOLEAN", {"default": None, "tooltip": "Enable or disable IPAdapter conditioning."}),
                 "controlnet_enabled": ("BOOLEAN", {"default": None, "tooltip": "Enable or disable ControlNet conditioning."}),
                 "image_preprocessing_config": ("STRING", {"tooltip": f"Image preprocessing config as JSON or comma-separated. e.g. [\"resize\", \"normalize\"]; resize, normalize"}),
@@ -180,6 +179,9 @@ class ControlNetTRTUpdateParams:
                 "ipadapter_scale": ("FLOAT", {"tooltip": "New IPAdapter scale."}),
                 "preprocessor": ("STRING", {"tooltip": "New ControlNet preprocessor type."}),
                 "preprocessor_params": ("DICT", {"tooltip": "New ControlNet preprocessor parameters (dict)."}),
+                "normalize_prompt_weights": ("BOOLEAN", {"default": None, "tooltip": "Whether to normalize prompt weights dynamically."}),
+                "normalize_seed_weights": ("BOOLEAN", {"default": None, "tooltip": "Whether to normalize seed weights dynamically."}),
+                "negative_prompt": ("STRING", {"tooltip": "Negative prompt to use for blending (overrides config negative_prompt)."}),
             }
         }
 
@@ -188,7 +190,7 @@ class ControlNetTRTUpdateParams:
     CATEGORY = "ControlNet+TRT"
     DESCRIPTION = "Dynamically update IPAdapter, ControlNet preprocessor, and prompt in the live model in one node."
 
-    def update_params(self, model, prompt_list=None, prompt_interpolation_method=None, seed_list=None, seed_interpolation_method=None, guidance_scale=None, num_inference_steps=None, delta=None, t_index_list=None, ipadapter_enabled=None, controlnet_enabled=None, image_preprocessing_config=None, image_postprocessing_config=None, latent_preprocessing_config=None, latent_postprocessing_config=None, style_image_path=None, ipadapter_scale=None, preprocessor=None, preprocessor_params=None):
+    def update_params(self, model, prompt_list=None, prompt_interpolation_method=None, seed_list=None, seed_interpolation_method=None, guidance_scale=None, num_inference_steps=None, delta=None, t_index_list=None, ipadapter_enabled=None, controlnet_enabled=None, image_preprocessing_config=None, image_postprocessing_config=None, latent_preprocessing_config=None, latent_postprocessing_config=None, style_image_path=None, ipadapter_scale=None, preprocessor=None, preprocessor_params=None, normalize_prompt_weights=None, normalize_seed_weights=None, negative_prompt=None):
         import json
         wrapper, config, (height, width) = model
         update_kwargs = {}
@@ -218,6 +220,12 @@ class ControlNetTRTUpdateParams:
             update_kwargs["delta"] = delta
         if t_index_list is not None:
             update_kwargs["t_index_list"] = [int(x) for x in parse_list(t_index_list)]
+        if normalize_prompt_weights is not None:
+            update_kwargs["normalize_prompt_weights"] = normalize_prompt_weights
+        if normalize_seed_weights is not None:
+            update_kwargs["normalize_seed_weights"] = normalize_seed_weights
+        if negative_prompt is not None:
+            update_kwargs["negative_prompt"] = negative_prompt
         if ipadapter_scale is not None or ipadapter_enabled is not None:
             ip_cfg = {}
             if ipadapter_scale is not None:
