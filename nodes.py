@@ -169,19 +169,46 @@ class ControlNetTRTUpdateParams:
                 "num_inference_steps": ("INT", {"tooltip": "Number of inference steps."}),
                 "delta": ("FLOAT", {"tooltip": "Delta parameter."}),
                 "t_index_list": ("STRING", {"tooltip": f"Timesteps list as JSON or comma-separated. e.g. [20,35,45]; 20,35,45"}),
-                "ipadapter_enabled": ("BOOLEAN", {"default": None, "tooltip": "Enable or disable IPAdapter conditioning."}),
+                # ControlNet major updatable fields
+                "controlnet_model_id": ("STRING", {"tooltip": "ControlNet model_id (dynamic update)."}),
+                "conditioning_scale": ("FLOAT", {"tooltip": "ControlNet conditioning_scale (dynamic update)."}),
                 "controlnet_enabled": ("BOOLEAN", {"default": None, "tooltip": "Enable or disable ControlNet conditioning."}),
+                "preprocessor": ("STRING", {"tooltip": "New ControlNet preprocessor type."}),
+                "conditioning_channels": ("INT", {"tooltip": "Number of conditioning channels for ControlNet (if supported)."}),
+                "weight_type": ("STRING", {"tooltip": "ControlNet weight_type (if supported)."}),
+                "image_path": ("STRING", {"tooltip": "Path to new control image (if supported)."}),
+                # IPAdapter major updatable fields
+                "ipadapter_enabled": ("BOOLEAN", {"default": None, "tooltip": "Enable or disable IPAdapter conditioning."}),
+                "ipadapter_scale": ("FLOAT", {"tooltip": "New IPAdapter scale."}),
+                "ipadapter_model_path": ("STRING", {"tooltip": "Path to IPAdapter model (dynamic update)."}),
+                "image_encoder_path": ("STRING", {"tooltip": "Path to image encoder (dynamic update)."}),
+                "num_image_tokens": ("INT", {"tooltip": "Number of image tokens for IPAdapter (dynamic update)."}),
+                "style_image_path": ("STRING", {"tooltip": "File path to new style image for IPAdapter."}),
+                "ipadapter_weight_type": ("STRING", {"tooltip": "IPAdapter weight_type (e.g. 'uniform', 'linear', etc.), controls per-layer scaling."}),
+                # General
+                "normalize_prompt_weights": ("BOOLEAN", {"default": None, "tooltip": "Whether to normalize prompt weights dynamically."}),
+                "normalize_seed_weights": ("BOOLEAN", {"default": None, "tooltip": "Whether to normalize seed weights dynamically."}),
+                "negative_prompt": ("STRING", {"tooltip": "Negative prompt to use for blending (overrides config negative_prompt)."}),
+                # Pre/post-processing configs
                 "image_preprocessing_config": ("STRING", {"tooltip": f"Image preprocessing config as JSON or comma-separated. e.g. [\"resize\", \"normalize\"]; resize, normalize"}),
                 "image_postprocessing_config": ("STRING", {"tooltip": f"Image postprocessing config as JSON or comma-separated. e.g. [\"clip\"]; clip"}),
                 "latent_preprocessing_config": ("STRING", {"tooltip": f"Latent preprocessing config as JSON or comma-separated. e.g. [\"scale\"]; scale"}),
                 "latent_postprocessing_config": ("STRING", {"tooltip": f"Latent postprocessing config as JSON or comma-separated. e.g. [\"quantize\"]; quantize"}),
-                "style_image_path": ("STRING", {"tooltip": "File path to new style image for IPAdapter."}),
-                "ipadapter_scale": ("FLOAT", {"tooltip": "New IPAdapter scale."}),
-                "preprocessor": ("STRING", {"tooltip": "New ControlNet preprocessor type."}),
-                "preprocessor_params": ("DICT", {"tooltip": "New ControlNet preprocessor parameters (dict)."}),
-                "normalize_prompt_weights": ("BOOLEAN", {"default": None, "tooltip": "Whether to normalize prompt weights dynamically."}),
-                "normalize_seed_weights": ("BOOLEAN", {"default": None, "tooltip": "Whether to normalize seed weights dynamically."}),
-                "negative_prompt": ("STRING", {"tooltip": "Negative prompt to use for blending (overrides config negative_prompt)."}),
+                # Preprocessor-specific params (all optional)
+                "canny_low_threshold": ("INT", {"default": None, "tooltip": "Canny low threshold."}),
+                "canny_high_threshold": ("INT", {"default": None, "tooltip": "Canny high threshold."}),
+                "depth_model_name": ("STRING", {"default": None, "tooltip": "Depth model name."}),
+                "depth_detect_resolution": ("INT", {"default": None, "tooltip": "Depth detect resolution."}),
+                "depth_image_resolution": ("INT", {"default": None, "tooltip": "Depth image resolution."}),
+                "hed_safe": ("BOOLEAN", {"default": None, "tooltip": "HED safe mode."}),
+                "lineart_coarse": ("BOOLEAN", {"default": None, "tooltip": "Lineart coarse mode."}),
+                "lineart_anime_style": ("BOOLEAN", {"default": None, "tooltip": "Lineart anime style."}),
+                "sharpen_intensity": ("FLOAT", {"default": None, "tooltip": "Sharpen intensity."}),
+                "sharpen_unsharp_radius": ("FLOAT", {"default": None, "tooltip": "Sharpen unsharp radius."}),
+                "sharpen_edge_enhancement": ("FLOAT", {"default": None, "tooltip": "Sharpen edge enhancement."}),
+                "sharpen_detail_boost": ("FLOAT", {"default": None, "tooltip": "Sharpen detail boost."}),
+                "sharpen_noise_reduction": ("FLOAT", {"default": None, "tooltip": "Sharpen noise reduction."}),
+                "sharpen_multi_scale": ("BOOLEAN", {"default": None, "tooltip": "Sharpen multi scale."}),
             }
         }
 
@@ -190,7 +217,16 @@ class ControlNetTRTUpdateParams:
     CATEGORY = "ControlNet+TRT"
     DESCRIPTION = "Dynamically update IPAdapter, ControlNet preprocessor, and prompt in the live model in one node."
 
-    def update_params(self, model, prompt_list=None, prompt_interpolation_method=None, seed_list=None, seed_interpolation_method=None, guidance_scale=None, num_inference_steps=None, delta=None, t_index_list=None, ipadapter_enabled=None, controlnet_enabled=None, image_preprocessing_config=None, image_postprocessing_config=None, latent_preprocessing_config=None, latent_postprocessing_config=None, style_image_path=None, ipadapter_scale=None, preprocessor=None, preprocessor_params=None, normalize_prompt_weights=None, normalize_seed_weights=None, negative_prompt=None):
+    def update_params(self, model, prompt_list=None, prompt_interpolation_method=None, seed_list=None, seed_interpolation_method=None, guidance_scale=None, num_inference_steps=None, delta=None, t_index_list=None,
+                     controlnet_model_id=None, conditioning_scale=None, controlnet_enabled=None, preprocessor=None, conditioning_channels=None, weight_type=None, image_path=None,
+                     ipadapter_enabled=None, ipadapter_scale=None, ipadapter_model_path=None, image_encoder_path=None, num_image_tokens=None, style_image_path=None, ipadapter_weight_type=None,
+                     normalize_prompt_weights=None, normalize_seed_weights=None, negative_prompt=None,
+                     image_preprocessing_config=None, image_postprocessing_config=None, latent_preprocessing_config=None, latent_postprocessing_config=None,
+                     canny_low_threshold=None, canny_high_threshold=None,
+                     depth_model_name=None, depth_detect_resolution=None, depth_image_resolution=None,
+                     hed_safe=None,
+                     lineart_coarse=None, lineart_anime_style=None,
+                     sharpen_intensity=None, sharpen_unsharp_radius=None, sharpen_edge_enhancement=None, sharpen_detail_boost=None, sharpen_noise_reduction=None, sharpen_multi_scale=None):
         import json
         wrapper, config, (height, width) = model
         update_kwargs = {}
@@ -226,18 +262,38 @@ class ControlNetTRTUpdateParams:
             update_kwargs["normalize_seed_weights"] = normalize_seed_weights
         if negative_prompt is not None:
             update_kwargs["negative_prompt"] = negative_prompt
-        if ipadapter_scale is not None or ipadapter_enabled is not None:
-            ip_cfg = {}
-            if ipadapter_scale is not None:
-                ip_cfg["scale"] = ipadapter_scale
-                if "ipadapters" in config and len(config["ipadapters"]):
-                    config["ipadapters"][0]["scale"] = ipadapter_scale
-            if ipadapter_enabled is not None:
-                ip_cfg["enabled"] = ipadapter_enabled
-                if "ipadapters" in config and len(config["ipadapters"]):
-                    config["ipadapters"][0]["enabled"] = ipadapter_enabled
+        # Build IPAdapter config update dict
+        ip_cfg = {}
+        if ipadapter_scale is not None:
+            ip_cfg["scale"] = ipadapter_scale
+            if "ipadapters" in config and len(config["ipadapters"]):
+                config["ipadapters"][0]["scale"] = ipadapter_scale
+        if ipadapter_enabled is not None:
+            ip_cfg["enabled"] = ipadapter_enabled
+            if "ipadapters" in config and len(config["ipadapters"]):
+                config["ipadapters"][0]["enabled"] = ipadapter_enabled
+        if ipadapter_model_path is not None:
+            ip_cfg["ipadapter_model_path"] = ipadapter_model_path
+            if "ipadapters" in config and len(config["ipadapters"]):
+                config["ipadapters"][0]["ipadapter_model_path"] = ipadapter_model_path
+        if image_encoder_path is not None:
+            ip_cfg["image_encoder_path"] = image_encoder_path
+            if "ipadapters" in config and len(config["ipadapters"]):
+                config["ipadapters"][0]["image_encoder_path"] = image_encoder_path
+        if num_image_tokens is not None:
+            ip_cfg["num_image_tokens"] = num_image_tokens
+            if "ipadapters" in config and len(config["ipadapters"]):
+                config["ipadapters"][0]["num_image_tokens"] = num_image_tokens
+        if style_image_path is not None:
+            ip_cfg["style_image_path"] = style_image_path
+            if "ipadapters" in config and len(config["ipadapters"]):
+                config["ipadapters"][0]["style_image_path"] = style_image_path
+        if ipadapter_weight_type is not None:
+            ip_cfg["weight_type"] = ipadapter_weight_type
+            if "ipadapters" in config and len(config["ipadapters"]):
+                config["ipadapters"][0]["weight_type"] = ipadapter_weight_type
+        if ip_cfg:
             update_kwargs["ipadapter_config"] = ip_cfg
-        
         if image_preprocessing_config is not None:
             update_kwargs["image_preprocessing_config"] = parse_list(image_preprocessing_config)
         if image_postprocessing_config is not None:
@@ -248,18 +304,52 @@ class ControlNetTRTUpdateParams:
             update_kwargs["latent_postprocessing_config"] = parse_list(latent_postprocessing_config)
         
         
-        # Combine logic for updating controlnet_config so update_kwargs["controlnet_config"] is only set once
+        # Build ControlNet config update dict
         controlnet_config_update_needed = False
         controlnet_config = config.get("controlnets", []).copy()
+        # Determine which preprocessor to use (new or current)
+        preproc_type = preprocessor if preprocessor is not None else (controlnet_config[0]["preprocessor"] if controlnet_config and "preprocessor" in controlnet_config[0] else None)
+        # Map preprocessor type to its relevant params
+        preproc_param_map = {
+            "canny": ["canny_low_threshold", "canny_high_threshold"],
+            "depth": ["depth_model_name", "depth_detect_resolution", "depth_image_resolution"],
+            "hed": ["hed_safe"],
+            "lineart": ["lineart_coarse", "lineart_anime_style"],
+            "sharpen": ["sharpen_intensity", "sharpen_unsharp_radius", "sharpen_edge_enhancement", "sharpen_detail_boost", "sharpen_noise_reduction", "sharpen_multi_scale"],
+        }
+        preproc_params = {}
+        if preproc_type in preproc_param_map:
+            for param in preproc_param_map[preproc_type]:
+                val = locals().get(param, None)
+                if val is not None:
+                    # Remove preprocessor prefix for backend dict
+                    key = param.split('_', 1)[1] if '_' in param else param
+                    preproc_params[key] = val
         if controlnet_config and isinstance(controlnet_config[0], dict):
+            if controlnet_model_id is not None:
+                controlnet_config[0]["model_id"] = controlnet_model_id
+                controlnet_config_update_needed = True
+            if conditioning_scale is not None:
+                controlnet_config[0]["conditioning_scale"] = conditioning_scale
+                controlnet_config_update_needed = True
             if controlnet_enabled is not None:
                 controlnet_config[0]["enabled"] = bool(controlnet_enabled)
                 controlnet_config_update_needed = True
             if preprocessor is not None:
                 controlnet_config[0]["preprocessor"] = preprocessor
                 controlnet_config_update_needed = True
-            if preprocessor_params is not None:
-                controlnet_config[0]["preprocessor_params"].update(preprocessor_params)
+            # Always update preprocessor_params with only relevant params
+            if preproc_params:
+                controlnet_config[0]["preprocessor_params"].update(preproc_params)
+                controlnet_config_update_needed = True
+            if conditioning_channels is not None:
+                controlnet_config[0]["conditioning_channels"] = conditioning_channels
+                controlnet_config_update_needed = True
+            if weight_type is not None:
+                controlnet_config[0]["weight_type"] = weight_type
+                controlnet_config_update_needed = True
+            if image_path is not None:
+                controlnet_config[0]["image_path"] = image_path
                 controlnet_config_update_needed = True
             if controlnet_config_update_needed:
                 update_kwargs["controlnet_config"] = controlnet_config
@@ -433,8 +523,8 @@ def get_engine_configs(*, verbose=False):
 
         has_unet = has_vae = False
 
-        for subdir in sorted(os.listdir(parent_path)):
-            subdir_path = os.path.join(parent_path, subdir)
+        for subdir in sorted(os.listdir(parent_dir)):
+            subdir_path = os.path.join(parent_dir, subdir)
             if not os.path.isdir(subdir_path):
                 continue
 
