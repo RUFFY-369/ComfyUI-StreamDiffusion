@@ -151,16 +151,25 @@ class ControlNetTRTModelLoader:
         return ((wrapper, config, (height, width)),)
 
 
-class ControlNetTRTUpdateParams:
+
+
+class ControlNetTRTStreamingSampler:
+    # Track which wrapper instances have been warmed up
+    _warmed_wrappers = set()
+
     @classmethod
     def INPUT_TYPES(cls):
+        # Merge all dynamic params from ControlNetTRTUpdateParams
         template_json = 'e.g. ["prompt1", "prompt2"] or [["prompt1", 1.0], ["prompt2", 0.5]]'
         template_csv = 'e.g. prompt1, prompt2'
         return {
             "required": {
-                "model": ("MODEL", {"tooltip": "Live model tuple (wrapper, config, resolution)."}),
+                "model": ("MODEL", {"tooltip": "ControlNet+TRT wrapper/model tuple (wrapper, config, resolution)."}),
+                "input_image": ("IMAGE", {"tooltip": "Input image for ControlNet conditioning."}),
             },
             "optional": {
+                "prompt": ("STRING", {"default": "", "multiline": True, "tooltip": "Prompt for generation."}),
+                "negative_prompt": ("STRING", {"default": "", "multiline": True, "tooltip": "Negative prompt for generation."}),
                 "prompt_list": ("STRING", {"tooltip": "Change the prompt(s) used for generation. Accepts JSON or comma-separated list."}),
                 "prompt_interpolation_method": ("STRING", {"default": "slerp", "tooltip": "How to blend/interpolate multiple prompts (e.g. slerp, lerp)."}),
                 "seed_list": ("STRING", {"tooltip": "Change the seed(s) for generation. Accepts JSON or comma-separated list."}),
@@ -188,7 +197,6 @@ class ControlNetTRTUpdateParams:
                 # General
                 "normalize_prompt_weights": ("BOOLEAN", {"default": None, "tooltip": "Normalize prompt weights for blending."}),
                 "normalize_seed_weights": ("BOOLEAN", {"default": None, "tooltip": "Normalize seed weights for blending."}),
-                "negative_prompt": ("STRING", {"tooltip": "Change the negative prompt (undesired aspects)."}),
                 # Pre/post-processing configs
                 "image_preprocessing_config": ("STRING", {"tooltip": "Image preprocessing steps (e.g. resize, normalize). JSON or comma-separated."}),
                 "image_postprocessing_config": ("STRING", {"tooltip": "Image postprocessing steps (e.g. clip). JSON or comma-separated."}),
@@ -212,27 +220,22 @@ class ControlNetTRTUpdateParams:
             }
         }
 
-    RETURN_TYPES = ("MODEL",)
-    FUNCTION = "update_params"
+    RETURN_TYPES = ("IMAGE",)
+    FUNCTION = "generate"
     CATEGORY = "ControlNet+TRT"
-    DESCRIPTION = "Dynamically update IPAdapter, ControlNet preprocessor, and prompt in the live model in one node."
+    DESCRIPTION = "Sampler for ControlNet+TRT. Runs warmup and inference for img2img."
 
-    def update_params(self, model, prompt_list=None, prompt_interpolation_method=None, seed_list=None, seed_interpolation_method=None, guidance_scale=None, num_inference_steps=None, delta=None, t_index_list=None,
-                     controlnet_model_id=None, conditioning_scale=None, controlnet_enabled=None, preprocessor=None, conditioning_channels=None, weight_type=None, image_path=None,
-                     ipadapter_enabled=None, ipadapter_scale=None, ipadapter_model_path=None, image_encoder_path=None, num_image_tokens=None, style_image_path=None, ipadapter_weight_type=None,
-                     normalize_prompt_weights=None, normalize_seed_weights=None, negative_prompt=None,
-                     image_preprocessing_config=None, image_postprocessing_config=None, latent_preprocessing_config=None, latent_postprocessing_config=None,
-                     canny_low_threshold=None, canny_high_threshold=None,
-                     depth_model_name=None, depth_detect_resolution=None, depth_image_resolution=None,
-                     hed_safe=None,
-                     lineart_coarse=None, lineart_anime_style=None,
-                     sharpen_intensity=None, sharpen_unsharp_radius=None, sharpen_edge_enhancement=None, sharpen_detail_boost=None, sharpen_noise_reduction=None, sharpen_multi_scale=None):
-        import json
+    def generate(self, model, input_image, **kwargs):
         wrapper, config, (height, width) = model
+        import numpy as np
+        from PIL import Image
+
+        # --- DYNAMIC PARAM UPDATE LOGIC (from ControlNetTRTUpdateParams) ---
         update_kwargs = {}
         def parse_list(val):
             if val is None:
                 return None
+            import json
             if isinstance(val, str):
                 try:
                     return json.loads(val)
@@ -240,76 +243,71 @@ class ControlNetTRTUpdateParams:
                     return [x.strip() for x in val.split(",") if x.strip()]
             return val
 
-        if prompt_list is not None:
-            update_kwargs["prompt_list"] = parse_list(prompt_list)
-        if prompt_interpolation_method is not None:
-            update_kwargs["prompt_interpolation_method"] = prompt_interpolation_method
-        if seed_list is not None:
-            update_kwargs["seed_list"] = parse_list(seed_list)
-        if seed_interpolation_method is not None:
-            update_kwargs["seed_interpolation_method"] = seed_interpolation_method
-        if guidance_scale is not None:
-            update_kwargs["guidance_scale"] = guidance_scale
-        if num_inference_steps is not None:
-            update_kwargs["num_inference_steps"] = num_inference_steps
-        if delta is not None:
-            update_kwargs["delta"] = delta
-        if t_index_list is not None:
-            update_kwargs["t_index_list"] = [int(x) for x in parse_list(t_index_list)]
-        if normalize_prompt_weights is not None:
-            update_kwargs["normalize_prompt_weights"] = normalize_prompt_weights
-        if normalize_seed_weights is not None:
-            update_kwargs["normalize_seed_weights"] = normalize_seed_weights
-        if negative_prompt is not None:
-            update_kwargs["negative_prompt"] = negative_prompt
-        # Build IPAdapter config update dict
+        # Collect all dynamic params: use sampler override if set, else config value
+        for key in [
+            "prompt_list", "prompt_interpolation_method", "seed_list", "seed_interpolation_method", "guidance_scale", "num_inference_steps", "delta", "t_index_list",
+            "normalize_prompt_weights", "normalize_seed_weights", "negative_prompt",
+            "image_preprocessing_config", "image_postprocessing_config", "latent_preprocessing_config", "latent_postprocessing_config"
+        ]:
+            val = kwargs.get(key, None)
+            if val is None:
+                val = config.get(key, None)
+            # Special robust handling for t_index_list
+            if key == "t_index_list":
+                parsed = None
+                if val is not None:
+                    if isinstance(val, str):
+                        # Try to parse as JSON or CSV
+                        try:
+                            parsed = [int(x) for x in parse_list(val)]
+                        except Exception:
+                            parsed = None
+                    elif isinstance(val, list):
+                        parsed = [int(x) for x in val if isinstance(x, (int, float, str)) and str(x).strip()]
+                    else:
+                        parsed = None
+                if not parsed or not isinstance(parsed, list) or not all(isinstance(x, int) for x in parsed) or len(parsed) == 0:
+                    raise ValueError("t_index_list must be a non-empty list of integers (e.g. '20,35,45') from config or sampler node. Got: {}".format(val))
+                update_kwargs[key] = parsed
+            elif key == "num_inference_steps":
+                # Validate num_inference_steps is a positive int
+                nsteps = None
+                if val is not None:
+                    try:
+                        nsteps = int(val)
+                    except Exception:
+                        nsteps = None
+                if nsteps is None or nsteps <= 0:
+                    raise ValueError("num_inference_steps must be a positive integer from config or sampler node. Got: {}".format(val))
+                update_kwargs[key] = nsteps
+            elif val is not None:
+                if key.endswith("_list") or key.endswith("_config"):
+                    update_kwargs[key] = parse_list(val)
+                else:
+                    update_kwargs[key] = val
+
+        # IPAdapter config
         ip_cfg = {}
-        if ipadapter_scale is not None:
-            ip_cfg["scale"] = ipadapter_scale
-            if "ipadapters" in config and len(config["ipadapters"]):
-                config["ipadapters"][0]["scale"] = ipadapter_scale
-        if ipadapter_enabled is not None:
-            ip_cfg["enabled"] = ipadapter_enabled
-            if "ipadapters" in config and len(config["ipadapters"]):
-                config["ipadapters"][0]["enabled"] = ipadapter_enabled
-        if ipadapter_model_path is not None:
-            ip_cfg["ipadapter_model_path"] = ipadapter_model_path
-            if "ipadapters" in config and len(config["ipadapters"]):
-                config["ipadapters"][0]["ipadapter_model_path"] = ipadapter_model_path
-        if image_encoder_path is not None:
-            ip_cfg["image_encoder_path"] = image_encoder_path
-            if "ipadapters" in config and len(config["ipadapters"]):
-                config["ipadapters"][0]["image_encoder_path"] = image_encoder_path
-        if num_image_tokens is not None:
-            ip_cfg["num_image_tokens"] = num_image_tokens
-            if "ipadapters" in config and len(config["ipadapters"]):
-                config["ipadapters"][0]["num_image_tokens"] = num_image_tokens
-        if style_image_path is not None:
-            ip_cfg["style_image_path"] = style_image_path
-            if "ipadapters" in config and len(config["ipadapters"]):
-                config["ipadapters"][0]["style_image_path"] = style_image_path
-        if ipadapter_weight_type is not None:
-            ip_cfg["weight_type"] = ipadapter_weight_type
-            if "ipadapters" in config and len(config["ipadapters"]):
-                config["ipadapters"][0]["weight_type"] = ipadapter_weight_type
+        for key in [
+            "ipadapter_scale", "ipadapter_enabled", "ipadapter_model_path", "image_encoder_path", "num_image_tokens", "style_image_path", "ipadapter_weight_type"
+        ]:
+            val = kwargs.get(key, None)
+            if val is None and "ipadapters" in config and len(config["ipadapters"]):
+                val = config["ipadapters"][0].get(key if key != "ipadapter_scale" else "scale", None)
+            if val is not None:
+                ip_cfg[key if key != "ipadapter_scale" else "scale"] = val
+                if "ipadapters" in config and len(config["ipadapters"]):
+                    config["ipadapters"][0][key if key != "ipadapter_scale" else "scale"] = val
         if ip_cfg:
             update_kwargs["ipadapter_config"] = ip_cfg
-        if image_preprocessing_config is not None:
-            update_kwargs["image_preprocessing_config"] = parse_list(image_preprocessing_config)
-        if image_postprocessing_config is not None:
-            update_kwargs["image_postprocessing_config"] = parse_list(image_postprocessing_config)
-        if latent_preprocessing_config is not None:
-            update_kwargs["latent_preprocessing_config"] = parse_list(latent_preprocessing_config)
-        if latent_postprocessing_config is not None:
-            update_kwargs["latent_postprocessing_config"] = parse_list(latent_postprocessing_config)
-        
-        
-        # Build ControlNet config update dict
+
+        # ControlNet config
         controlnet_config_update_needed = False
         controlnet_config = config.get("controlnets", []).copy()
-        # Determine which preprocessor to use (new or current)
-        preproc_type = preprocessor if preprocessor is not None else (controlnet_config[0]["preprocessor"] if controlnet_config and "preprocessor" in controlnet_config[0] else None)
-        # Map preprocessor type to its relevant params
+        preprocessor = kwargs.get("preprocessor", None)
+        if preprocessor is None and controlnet_config and "preprocessor" in controlnet_config[0]:
+            preprocessor = controlnet_config[0]["preprocessor"]
+        preproc_type = preprocessor
         preproc_param_map = {
             "canny": ["canny_low_threshold", "canny_high_threshold"],
             "depth": ["depth_model_name", "depth_detect_resolution", "depth_image_resolution"],
@@ -320,78 +318,49 @@ class ControlNetTRTUpdateParams:
         preproc_params = {}
         if preproc_type in preproc_param_map:
             for param in preproc_param_map[preproc_type]:
-                val = locals().get(param, None)
+                val = kwargs.get(param, None)
+                if val is None and controlnet_config and "preprocessor_params" in controlnet_config[0]:
+                    val = controlnet_config[0]["preprocessor_params"].get(param.split('_', 1)[1] if '_' in param else param, None)
                 if val is not None:
-                    # Remove preprocessor prefix for backend dict
                     key = param.split('_', 1)[1] if '_' in param else param
                     preproc_params[key] = val
         if controlnet_config and isinstance(controlnet_config[0], dict):
-            if controlnet_model_id is not None:
-                controlnet_config[0]["model_id"] = controlnet_model_id
-                controlnet_config_update_needed = True
-            if conditioning_scale is not None:
-                controlnet_config[0]["conditioning_scale"] = conditioning_scale
-                controlnet_config_update_needed = True
-            if controlnet_enabled is not None:
-                controlnet_config[0]["enabled"] = bool(controlnet_enabled)
-                controlnet_config_update_needed = True
-            if preprocessor is not None:
-                controlnet_config[0]["preprocessor"] = preprocessor
-                controlnet_config_update_needed = True
-            # Always update preprocessor_params with only relevant params
+            for key in ["controlnet_model_id", "conditioning_scale", "controlnet_enabled", "preprocessor", "conditioning_channels", "weight_type", "image_path"]:
+                val = kwargs.get(key, None)
+                if val is None:
+                    if key == "controlnet_model_id":
+                        val = controlnet_config[0].get("model_id", None)
+                    else:
+                        val = controlnet_config[0].get(key, None)
+                if val is not None:
+                    if key == "controlnet_model_id":
+                        controlnet_config[0]["model_id"] = val
+                    elif key == "conditioning_scale":
+                        controlnet_config[0]["conditioning_scale"] = val
+                    elif key == "controlnet_enabled":
+                        controlnet_config[0]["enabled"] = bool(val)
+                    elif key == "preprocessor":
+                        controlnet_config[0]["preprocessor"] = val
+                    else:
+                        controlnet_config[0][key] = val
+                    controlnet_config_update_needed = True
             if preproc_params:
                 controlnet_config[0]["preprocessor_params"].update(preproc_params)
-                controlnet_config_update_needed = True
-            if conditioning_channels is not None:
-                controlnet_config[0]["conditioning_channels"] = conditioning_channels
-                controlnet_config_update_needed = True
-            if weight_type is not None:
-                controlnet_config[0]["weight_type"] = weight_type
-                controlnet_config_update_needed = True
-            if image_path is not None:
-                controlnet_config[0]["image_path"] = image_path
                 controlnet_config_update_needed = True
             if controlnet_config_update_needed:
                 update_kwargs["controlnet_config"] = controlnet_config
                 config["controlnets"] = controlnet_config
+
         if update_kwargs and hasattr(wrapper, "update_stream_params"):
             wrapper.update_stream_params(**update_kwargs)
-        return ((wrapper, config, (height, width)),)
 
+        # --- END DYNAMIC PARAM UPDATE LOGIC ---
 
-class ControlNetTRTStreamingSampler:
-    # Track which wrapper instances have been warmed up
-    _warmed_wrappers = set()
-
-    @classmethod
-    def INPUT_TYPES(cls):
-        return {
-            "required": {
-                "model": ("MODEL", {"tooltip": "ControlNet+TRT wrapper/model tuple (wrapper, config, resolution)."}),
-                "input_image": ("IMAGE", {"tooltip": "Input image for ControlNet conditioning."}),
-                "prompt": ("STRING", {"default": "", "multiline": True, "tooltip": "Prompt for generation."}),
-                "negative_prompt": ("STRING", {"default": "", "multiline": True, "tooltip": "Negative prompt for generation."}),
-            }
-        }
-
-    RETURN_TYPES = ("IMAGE",)
-    FUNCTION = "generate"
-    CATEGORY = "ControlNet+TRT"
-    DESCRIPTION = "Sampler for ControlNet+TRT. Runs warmup and inference for img2img."
-
-    def generate(self, model, input_image, prompt, negative_prompt):
-        wrapper, config, (height, width) = model
-        import numpy as np
-        from PIL import Image
-
-            # IMPORTANT: Do NOT update config['prompt'] or config['negative_prompt'] here.
-            # Only call wrapper.update_prompt / update_negative_prompt.
-            # Updating config can cause unwanted resets and suppress IPAdapter effects.
-            # This fix preserves IPAdapter style conditioning during dynamic prompt changes.
-        # Dynamically update prompt and negative_prompt
+        # Prompt/neg prompt for backward compatibility
+        prompt = kwargs.get("prompt", None)
+        negative_prompt = kwargs.get("negative_prompt", None)
         if (prompt is not None and prompt != config.get("prompt", "")) or (negative_prompt is not None and negative_prompt != config.get("negative_prompt", "")):
             print(f"[ControlNetTRTStreamingSampler] Updating prompt/negative_prompt via update_prompt (clear_blending=False)")
-            # Use both prompt and negative_prompt if changed, else fallback to config value
             new_prompt = prompt if prompt is not None else config.get("prompt", "")
             new_negative_prompt = negative_prompt if negative_prompt is not None else config.get("negative_prompt", "")
             if hasattr(wrapper, "update_prompt"):
@@ -415,7 +384,6 @@ class ControlNetTRTStreamingSampler:
             print(f"[ControlNetTRTStreamingSampler] Running warmup {warmup_count} times for new wrapper instance {wrapper_id}")
             for i in range(warmup_count):
                 print(f"Running warmup inference {i+1}/{warmup_count}...")
-                # Update control image for all configured ControlNets
                 if hasattr(wrapper.stream, '_controlnet_module') and wrapper.stream._controlnet_module:
                     controlnet_count = len(wrapper.stream._controlnet_module.controlnets)
                     print(f"Updating control image for {controlnet_count} ControlNet(s) on incoming frame from stream")
@@ -428,8 +396,6 @@ class ControlNetTRTStreamingSampler:
         else:
             print(f"[ControlNetTRTStreamingSampler] Warmup already done for wrapper instance {wrapper_id}, skipping.")
 
-        # Inference
-        # Update control image for all configured ControlNets
         if hasattr(wrapper.stream, '_controlnet_module') and wrapper.stream._controlnet_module:
             controlnet_count = len(wrapper.stream._controlnet_module.controlnets)
             print(f"Updating control image for {controlnet_count} ControlNet(s) on incoming frame from stream")
@@ -440,15 +406,12 @@ class ControlNetTRTStreamingSampler:
         output_tensor = wrapper(input_pil)
 
         if isinstance(output_tensor, torch.Tensor):
-            # If batched, take first image
             if output_tensor.dim() == 4:
                 output_tensor = output_tensor[0]
             if output_tensor.dim() == 3:
                 output_tensor = output_tensor.permute(1, 2, 0)
-            # Add batch dimension for ComfyUI
             output_tensor = output_tensor.unsqueeze(0)
         else:
-            # Fallback: convert PIL image to tensor
             output_tensor = to_tensor(output_tensor).permute(1,2,0).unsqueeze(0)
         return (output_tensor,)
 
@@ -993,7 +956,6 @@ NODE_CLASS_MAPPINGS = {
     "ControlNetTRTConfig": ControlNetTRTConfig,
     "ControlNetTRTModelLoader": ControlNetTRTModelLoader,
     "ControlNetTRTStreamingSampler": ControlNetTRTStreamingSampler,
-    "ControlNetTRTUpdateParams": ControlNetTRTUpdateParams,
 }
 
 NODE_DISPLAY_NAME_MAPPINGS = {
@@ -1008,5 +970,4 @@ NODE_DISPLAY_NAME_MAPPINGS = {
     "ControlNetTRTConfig": "ControlNet + TRT Config",
     "ControlNetTRTModelLoader": "ControlNet + TRT Model Loader",
     "ControlNetTRTStreamingSampler": "ControlNet + TRT Streaming Sampler",
-    "ControlNetTRTUpdateParams": "ControlNet + TRT Update Params",
 }
