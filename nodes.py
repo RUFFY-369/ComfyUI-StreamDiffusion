@@ -89,13 +89,24 @@ class ControlNetTRTConfig:
             })
         # Build IPAdapter config
         ipadapter_config = []
-        if kwargs.get("ipadapter_enabled", True):
+        ipadapter_enabled = kwargs.get("ipadapter_enabled", True)
+        if ipadapter_enabled:
             ipadapter_config.append({
                 "ipadapter_model_path": kwargs["ipadapter_model_path"],
                 "image_encoder_path": kwargs["image_encoder_path"],
                 "style_image": kwargs["style_image"],
                 "scale": kwargs["ipadapter_scale"],
                 "enabled": True,
+                "num_image_tokens": kwargs["num_image_tokens"],
+            })
+        else:
+            # If explicitly disabled, add a config with enabled=False for clarity
+            ipadapter_config.append({
+                "ipadapter_model_path": kwargs["ipadapter_model_path"],
+                "image_encoder_path": kwargs["image_encoder_path"],
+                "style_image": kwargs["style_image"],
+                "scale": kwargs["ipadapter_scale"],
+                "enabled": False,
                 "num_image_tokens": kwargs["num_image_tokens"],
             })
 
@@ -288,16 +299,24 @@ class ControlNetTRTStreamingSampler:
 
         # IPAdapter config
         ip_cfg = {}
+        ipadapter_enabled = None
         for key in [
             "ipadapter_scale", "ipadapter_enabled", "ipadapter_model_path", "image_encoder_path", "num_image_tokens", "style_image_path", "ipadapter_weight_type"
         ]:
             val = kwargs.get(key, None)
             if val is None and "ipadapters" in config and len(config["ipadapters"]):
                 val = config["ipadapters"][0].get(key if key != "ipadapter_scale" else "scale", None)
+            if key == "ipadapter_enabled":
+                ipadapter_enabled = val
             if val is not None:
                 ip_cfg[key if key != "ipadapter_scale" else "scale"] = val
                 if "ipadapters" in config and len(config["ipadapters"]):
                     config["ipadapters"][0][key if key != "ipadapter_scale" else "scale"] = val
+        # Actually enable/disable IPAdapter in config
+        if ipadapter_enabled is not None:
+            if "ipadapters" in config and len(config["ipadapters"]):
+                config["ipadapters"][0]["enabled"] = bool(ipadapter_enabled)
+            ip_cfg["enabled"] = bool(ipadapter_enabled)
         if ip_cfg:
             update_kwargs["ipadapter_config"] = ip_cfg
 
