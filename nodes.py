@@ -181,10 +181,11 @@ class ControlNetTRTStreamingSampler:
             "optional": {
                 "prompt": ("STRING", {"default": "", "multiline": True, "tooltip": "Prompt for generation."}),
                 "negative_prompt": ("STRING", {"default": "", "multiline": True, "tooltip": "Negative prompt for generation."}),
-                "prompt_list": ("STRING", {"tooltip": "Change the prompt(s) used for generation. Accepts JSON or comma-separated list."}),
-                "prompt_interpolation_method": ("STRING", {"default": "slerp", "tooltip": "How to blend/interpolate multiple prompts (e.g. slerp, lerp)."}),
-                "seed_list": ("STRING", {"tooltip": "Change the seed(s) for generation. Accepts JSON or comma-separated list."}),
-                "seed_interpolation_method": ("STRING", {"default": "linear", "tooltip": "How to blend/interpolate multiple seeds (e.g. linear)."}),
+                # prompt_list, prompt_interpolation_method, seed_list, and seed_interpolation_method are commented out because blending/interpolation of prompts and seeds is only supported in the realtime StreamDiffusion demo, where the backend is continuously generating frames and can update the blend live. In ComfyStream/ComfyUI, single-image workflows do not support these features out of the box. To enable blending/interpolation in ComfyStream, a custom integration is needed to update these parameters for each frame in a streaming or animation context.
+                # "prompt_list": ("STRING", {"tooltip": "Change the prompt(s) used for generation. Accepts JSON or comma-separated list."}),
+                # "prompt_interpolation_method": ("STRING", {"default": "slerp", "tooltip": "How to blend/interpolate multiple prompts (e.g. slerp, lerp)."}),
+                # "seed_list": ("STRING", {"tooltip": "Change the seed(s) for generation. Accepts JSON or comma-separated list."}),
+                # "seed_interpolation_method": ("STRING", {"default": "linear", "tooltip": "How to blend/interpolate multiple seeds (e.g. linear)."}),
                 "guidance_scale": ("FLOAT", {"tooltip": "Controls how closely the image matches the prompt. Higher = more adherence."}),
                 "num_inference_steps": ("INT", {"tooltip": "Number of denoising steps. More steps = better quality, slower."}),
                 "delta": ("FLOAT", {"tooltip": "Delta parameter for diversity. Higher = more diverse outputs."}),
@@ -255,8 +256,14 @@ class ControlNetTRTStreamingSampler:
             return val
 
         # Collect all dynamic params: use sampler override if set, else config value
+        # prompt_list is commented out for now. See above for explanation.
+        # prompt_list, prompt_interpolation_method, seed_list, and seed_interpolation_method are commented out for now. See above for explanation.
         for key in [
-            "prompt_list", "prompt_interpolation_method", "seed_list", "seed_interpolation_method", "guidance_scale", "num_inference_steps", "delta", "t_index_list",
+            # "prompt_list",  # See comment above
+            # "prompt_interpolation_method",  # See comment above
+            # "seed_list",  # See comment above
+            # "seed_interpolation_method",  # See comment above
+            "guidance_scale", "num_inference_steps", "delta", "t_index_list",
             "normalize_prompt_weights", "normalize_seed_weights", "negative_prompt",
             "image_preprocessing_config", "image_postprocessing_config", "latent_preprocessing_config", "latent_postprocessing_config"
         ]:
