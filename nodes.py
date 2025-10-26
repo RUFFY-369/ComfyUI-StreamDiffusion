@@ -29,6 +29,8 @@ class ControlNetTRTConfig:
                 "seed": ("INT", {"default": 2}),
                 "num_inference_steps": ("INT", {"default": 50, "min": 1, "max": 100}),
                 "use_lcm_lora": ("BOOLEAN", {"default": True}),
+                # LoRA support: JSON string, e.g. {"lora1": 0.7, "lora2": 1.0}
+                "lora_dict_str": ("STRING", {"default": "", "multiline": True, "tooltip": "LoRA dictionary as JSON, e.g. {\"lora1\": 0.7, \"lora2\": 1.0}"}),
                 "prompt": ("STRING", {"default": "", "multiline": True}),
                 "negative_prompt": ("STRING", {"default": "blurry, low quality, distorted, 3d render", "multiline": True, "tooltip": "Text prompt specifying undesired aspects to avoid in the generated image."}),
                 "guidance_scale": ("FLOAT", {"default": 1.1, "min": 0.1, "max": 20.0, "step": 0.01, "tooltip": "Controls the strength of the guidance. Higher values make the image more closely match the prompt."}),
@@ -57,6 +59,7 @@ class ControlNetTRTConfig:
     DESCRIPTION = "Builds a config dictionary for ControlNet and IPAdapter together."
 
     def build_config(self, **kwargs):
+        import json
         # Validate t_index_list
         t_index_raw = kwargs.pop("t_index_list")
         try:
@@ -110,6 +113,16 @@ class ControlNetTRTConfig:
                 "num_image_tokens": kwargs["num_image_tokens"],
             })
 
+        # Parse lora_dict_str (JSON) to dict, with error handling
+        lora_dict_str = kwargs.get("lora_dict_str", "").strip()
+        lora_dict = None
+        if lora_dict_str:
+            try:
+                lora_dict = json.loads(lora_dict_str)
+                if not isinstance(lora_dict, dict):
+                    raise ValueError("lora_dict_str must be a JSON object (dictionary)")
+            except Exception as e:
+                raise ValueError(f"Invalid lora_dict_str: {e}\nExample: {{\"lora1\": 0.7, \"lora2\": 1.0}}")
         # Build main config dict with all YAML params
         config = dict(
             model_id=kwargs["model_id"],
@@ -131,6 +144,7 @@ class ControlNetTRTConfig:
             seed=kwargs["seed"],
             num_inference_steps=kwargs["num_inference_steps"],
             use_lcm_lora=kwargs["use_lcm_lora"],
+            lora_dict=lora_dict,
             prompt=kwargs["prompt"],
             negative_prompt=kwargs["negative_prompt"],
             guidance_scale=kwargs["guidance_scale"],
