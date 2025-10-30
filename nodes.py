@@ -1,3 +1,116 @@
+import json
+import traceback
+class TRTEngineBuilderNode:
+    @classmethod
+    def INPUT_TYPES(cls):
+        return {
+            "required": {
+                "model_id": ("STRING", {"default": "KBlueLeaf/kohaku-v2.1"}),
+                "t_index_list": ("STRING", {"default": "20,35,45", "tooltip": "Comma-separated list of denoising steps (e.g. 20,35,45)"}),
+                "height": ("INT", {"default": 512, "min": 64, "max": 2048}),
+                "width": ("INT", {"default": 512, "min": 64, "max": 2048}),
+                "engine_dir": ("STRING", {"default": "engines", "tooltip": "Directory to save TensorRT engines."}),
+                "controlnet_model_ids": ("STRING", {"default": "", "tooltip": "Space/comma-separated ControlNet model IDs (optional)"}),
+                "lora_dict_str": ("STRING", {"default": "", "multiline": True, "tooltip": "LoRA dictionary as JSON, e.g. {\"lora1\": 0.7, \"lora2\": 1.0}"}),
+                "ipadapter_type": ("STRING", {"default": "", "tooltip": "IPAdapter type: '', 'regular', or 'faceid' (optional)"}),
+                "min_timesteps": ("INT", {"default": 1, "min": 1, "max": 50}),
+                "max_timesteps": ("INT", {"default": 4, "min": 1, "max": 50}),
+            }
+        }
+    RETURN_TYPES = ("STRING",)
+    FUNCTION = "build_trt_engine"
+    CATEGORY = "TensorRT"
+    DESCRIPTION = "Builds TensorRT engine(s) for the specified model and configuration."
+
+    def build_trt_engine(self, **kwargs):
+        try:
+            from streamdiffusion import StreamDiffusionWrapper
+        except ImportError:
+            return ("ERROR: StreamDiffusion package not installed!",)
+
+        # Parse t_index_list
+        t_index_raw = kwargs.get("t_index_list", "20,35,45")
+        try:
+            t_index_list = [int(x.strip()) for x in t_index_raw.split(",") if x.strip()]
+        except Exception as e:
+            return (f"ERROR: Invalid t_index_list: {t_index_raw}",)
+        if not t_index_list:
+            return ("ERROR: t_index_list must be a non-empty list of integers.",)
+
+        # Parse LoRA dict
+        lora_dict = None
+        lora_dict_str = kwargs.get("lora_dict_str", "").strip()
+        if lora_dict_str:
+            try:
+                lora_dict = json.loads(lora_dict_str)
+                if not isinstance(lora_dict, dict):
+                    return ("ERROR: lora_dict_str must be a JSON object (dictionary)",)
+            except Exception as e:
+                return (f"ERROR: Invalid lora_dict_str: {e}",)
+
+        # Parse ControlNet model IDs
+        controlnet_ids = []
+        cn_raw = kwargs.get("controlnet_model_ids", "").strip()
+        if cn_raw:
+            if "," in cn_raw:
+                controlnet_ids = [x.strip() for x in cn_raw.split(",") if x.strip()]
+            else:
+                controlnet_ids = [x.strip() for x in cn_raw.split() if x.strip()]
+
+        # Prepare engine build params
+        params = dict(
+            model_id=kwargs["model_id"],
+            t_index_list=t_index_list,
+            acceleration="tensorrt",
+            width=kwargs["width"],
+            height=kwargs["height"],
+            engine_dir=kwargs["engine_dir"],
+            lora_dict=lora_dict,
+        )
+        # Add ControlNet config if provided
+        if controlnet_ids:
+            params["controlnets"] = [{"model_id": cid, "preprocessor": "passthrough", "conditioning_scale": 0.5, "enabled": True, "preprocessor_params": {}} for cid in controlnet_ids]
+        # Add IPAdapter config if provided
+        ipadapter_type = kwargs.get("ipadapter_type", "").strip()
+        if ipadapter_type:
+            params["ipadapter"] = {"type": ipadapter_type}
+
+        # Timesteps for engine build
+        min_timesteps = kwargs.get("min_timesteps", 1)
+        max_timesteps = kwargs.get("max_timesteps", 4)
+
+        # Actually build the engine(s)
+        try:
+            # This will trigger engine build via wrapper (no inference)
+            wrapper = StreamDiffusionWrapper(
+                model_id_or_path=params["model_id"],
+                t_index_list=params["t_index_list"],
+                lora_dict=params.get("lora_dict"),
+                mode="img2img",
+                output_type="pt",
+                width=params["width"],
+                height=params["height"],
+                acceleration="tensorrt",
+                engine_dir=params["engine_dir"],
+                use_tiny_vae=True,
+                use_lcm_lora=True,
+                frame_buffer_size=1,
+                warmup=1,
+                use_denoising_batch=True,
+                device="cuda",
+                dtype=torch.float16,
+                cfg_type="self",
+                delta=0.7,
+                seed=2,
+            )
+            # Optionally, trigger engine build for controlnets/ipadapter by calling prepare()
+            # (No inference, just engine build)
+            wrapper.prepare(prompt="engine build", negative_prompt="", guidance_scale=1.0)
+            return (f"SUCCESS: TensorRT engine(s) built in {params['engine_dir']}",)
+        except Exception as e:
+            tb = traceback.format_exc()
+            return (f"ERROR: {e}\n{tb}",)
+
 import torch
 # --- Modular ControlNet+TRT nodes ---
 from streamdiffusion import create_wrapper_from_config
