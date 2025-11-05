@@ -51,6 +51,8 @@ class ControlNetTRTConfig:
                 "use_tiny_vae": ("BOOLEAN", {"default": True, "tooltip": "Use tiny VAE for faster inference."}),
                 "cfg_type": ("STRING", {"default": "self", "tooltip": "Config type for advanced options."}),
                 "delta": ("FLOAT", {"default": 0.7, "min": 0.0, "max": 3.0, "step": 0.01, "tooltip": "Delta multiplier for virtual residual noise, affecting image diversity."}),
+                # Engine build only flag
+                "compile_engines_only": ("BOOLEAN", {"default": False, "tooltip": "If True, only compile TensorRT engines without loading the model. If False, compile and load for inference."}),
             }
         }
     RETURN_TYPES = ("MULTICONTROL_CONFIG",)
@@ -149,6 +151,7 @@ class ControlNetTRTConfig:
             negative_prompt=kwargs["negative_prompt"],
             guidance_scale=kwargs["guidance_scale"],
             output_type="pt",  # Always use tensor output for consistency
+            compile_engines_only=kwargs["compile_engines_only"],
         )
         return (config,)
 
