@@ -18,6 +18,7 @@ USAGE:
         --ipadapters '[{"type": "regular"}]'
 
 NOTES:
+- Example YAML config files are available in the ../configs folder.
 - CLI arguments override values in the config file if both are provided.
 - For complex types (lists/dicts), pass JSON strings.
 - The script prints a summary of the config before building.
