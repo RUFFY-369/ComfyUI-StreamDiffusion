@@ -1,25 +1,4 @@
 {
-  "1": {
-    "inputs": {
-      "image": "Chinese Woman.jpeg"
-    },
-    "class_type": "PrimaryInputLoadImage",
-    "_meta": {
-      "title": "Primary Input Image"
-    }
-  },
-  "2": {
-    "inputs": {
-      "images": [
-        "43",
-        0
-      ]
-    },
-    "class_type": "PreviewImage",
-    "_meta": {
-      "title": "Preview Image"
-    }
-  },
   "6": {
     "inputs": {
       "image": "style1.jpg"
@@ -29,41 +8,11 @@
       "title": "Load Image"
     }
   },
-  "43": {
-    "inputs": {
-      "prompt": "an anime render of a girl with purple hair, masterpiece, pixel art, PixArFK",
-      "negative_prompt": "blurry, low quality, distorted, 3d render",
-      "model": [
-        "53",
-        0
-      ],
-      "input_image": [
-        "1",
-        0
-      ]
-    },
-    "class_type": "ControlNetTRTStreamingSampler",
-    "_meta": {
-      "title": "ControlNet + TRT Streaming Sampler"
-    }
-  },
-  "47": {
-    "inputs": {
-      "config": [
-        "52",
-        0
-      ]
-    },
-    "class_type": "ControlNetTRTModelLoader",
-    "_meta": {
-      "title": "ControlNet + TRT Model Loader"
-    }
-  },
   "52": {
     "inputs": {
       "model_id": "Lykon/dreamshaper-8",
       "controlnet_model_id": "lllyasviel/control_v11p_sd15_canny",
-      "conditioning_scale": 0.29,
+      "conditioning_scale": 0,
       "preprocessor": "canny",
       "low_threshold": 100,
       "high_threshold": 200,
@@ -74,15 +23,16 @@
       "warmup": 10,
       "acceleration": "tensorrt",
       "use_denoising_batch": true,
-      "seed": 208,
+      "seed": 412,
       "num_inference_steps": 50,
       "use_lcm_lora": true,
+      "lora_dict_str": "{\"/workspace/ComfyUI/models/loras/SD1.5/PixelArt.safetensors\":1.2}  ",
       "prompt": "",
       "negative_prompt": "blurry, low quality, distorted, 3d render",
-      "guidance_scale": 1.1,
+      "guidance_scale": 1.1000000000000003,
       "ipadapter_model_path": "/workspace/ComfyUI/models/ipadapter/ip-adapter-plus_sd15.bin",
       "image_encoder_path": "/workspace/ComfyUI/models/ipadapter/image_encoder",
-      "ipadapter_scale": 0.7,
+      "ipadapter_scale": 0.7000000000000002,
       "ipadapter_enabled": true,
       "use_controlnet": true,
       "num_image_tokens": 16,
@@ -91,7 +41,8 @@
       "dtype": "float16",
       "use_tiny_vae": true,
       "cfg_type": "self",
-      "delta": 0.7,
+      "delta": 0.7000000000000002,
+      "compile_engines_only": false,
       "style_image": [
         "6",
         0
@@ -102,19 +53,16 @@
       "title": "ControlNet + TRT Config"
     }
   },
-  "53": {
+  "60": {
     "inputs": {
-      "style_image_path": "",
-      "ipadapter_scale": 0.1,
-      "preprocessor": "",
-      "model": [
-        "47",
+      "config": [
+        "52",
         0
       ]
     },
-    "class_type": "ControlNetTRTUpdateParams",
+    "class_type": "ControlNetTRTEngineCreator",
     "_meta": {
-      "title": "ControlNet + TRT Update Params"
+      "title": "ControlNet + TRT Engine Creator"
     }
   }
 }
