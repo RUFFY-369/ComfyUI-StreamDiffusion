@@ -26,6 +26,11 @@ class ControlNetTRTConfig:
                 "warmup": ("INT", {"default": 10, "min": 0, "max": 100}),
                 "acceleration": ("STRING", {"default": "tensorrt"}),
                 "use_denoising_batch": ("BOOLEAN", {"default": True}),
+                "do_add_noise": ("BOOLEAN", {"default": True, "tooltip": "Whether to add noise during denoising steps. Enable this to allow the model to generate diverse outputs."}),
+                "enable_similar_image_filter": ("BOOLEAN", {"default": False, "tooltip": "Enable filtering out images that are too similar to previous outputs."}),
+                "similar_image_filter_threshold": ("FLOAT", {"default": 0.98, "min": 0.0, "max": 1.0, "tooltip": "Threshold for similar image filtering."}),
+                "similar_image_filter_max_skip_frame": ("INT", {"default": 10, "min": 0, "max": 100, "tooltip": "Maximum number of frames to skip when filtering similar images."}),
+                "use_safety_checker": ("BOOLEAN", {"default": False, "tooltip": "Enable safety checker to filter NSFW content. May impact performance."}),
                 "seed": ("INT", {"default": 2}),
                 "num_inference_steps": ("INT", {"default": 50, "min": 1, "max": 100}),
                 "use_lcm_lora": ("BOOLEAN", {"default": True}),
@@ -42,7 +47,6 @@ class ControlNetTRTConfig:
                 "ipadapter_enabled": ("BOOLEAN", {"default": True}),
                 # ControlNet switch
                 "use_controlnet": ("BOOLEAN", {"default": True, "tooltip": "Enable or disable ControlNet conditioning."}),
-                    # Removed stray fragment; num_image_tokens is correctly defined and used in config
                 "num_image_tokens": ("INT", {"default": 16, "min": 1, "max": 256, "tooltip": "Number of image tokens for conditioning."}),
                 # Additional config fields for TRT
                 "engine_dir": ("STRING", {"default": "/workspace/ComfyUI/engines/", "tooltip": "Directory for TensorRT engine files."}),
@@ -137,6 +141,11 @@ class ControlNetTRTConfig:
             warmup=kwargs["warmup"],
             acceleration=kwargs["acceleration"],
             use_denoising_batch=kwargs["use_denoising_batch"],
+            do_add_noise=kwargs["do_add_noise"],
+            enable_similar_image_filter=kwargs["enable_similar_image_filter"],
+            similar_image_filter_threshold=kwargs["similar_image_filter_threshold"],
+            similar_image_filter_max_skip_frame=kwargs["similar_image_filter_max_skip_frame"],
+            use_safety_checker=kwargs["use_safety_checker"],
             device=kwargs["device"],
             dtype=kwargs["dtype"],
             engine_dir=kwargs["engine_dir"],
