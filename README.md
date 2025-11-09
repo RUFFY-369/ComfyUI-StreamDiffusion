@@ -27,7 +27,23 @@ pip install -r requirements.txt
 ```
 
 ## Usage
+
 After installation, launch ComfyUI. The StreamDiffusion node and its features will be available in the node menu.
+
+### Example Workflows
+
+1. **Build TensorRT Engines**
+	- Use the workflow: [`examples/sd15_tensorrt_engine_build.json`](examples/sd15_tensorrt_engine_build.json)
+	- This workflow demonstrates how to build TensorRT engines for your models.
+
+2. **Inference with Streaming Sampler**
+	- Use the workflow: [`examples/sd15_all_dynamic_params_wlora.json`](examples/sd15_all_dynamic_params_wlora.json)
+	- This workflow shows how to use the built engines for real-time inference and dynamically change parameters with the streaming sampler node.
+
+To use these workflows:
+1. Open ComfyUI.
+2. Load the desired workflow JSON file from the `examples/` directory.
+3. Follow the node connections and adjust parameters as needed.
 
 ## Requirements
 - Python 3.10+
