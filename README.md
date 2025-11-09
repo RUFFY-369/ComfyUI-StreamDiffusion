@@ -39,4 +39,18 @@ After installation, launch ComfyUI. The StreamDiffusion node and its features wi
 - [Bug Tracker](https://github.com/RUFFY-369/ComfyUI-StreamDiffusion/issues)
 
 ## License
-This project is licensed under the terms of the LICENSE file in this repository.
+This project is licensed under the terms of the [Apache License 2.0](LICENSE), the same as the original StreamDiffusion repository.
+## Citation
+If you use this node or its ideas in your research or projects, please cite the original StreamDiffusion paper:
+
+StreamDiffusion: Real-Time Text-to-Image Generation on Video and Web Cameras
+([arXiv:2312.12491](https://arxiv.org/abs/2312.12491))
+
+```
+@article{zhang2023streamdiffusion,
+	title={StreamDiffusion: Real-Time Text-to-Image Generation on Video and Web Cameras},
+	author={Zhang, Yifan and others},
+	journal={arXiv preprint arXiv:2312.12491},
+	year={2023}
+}
+```
