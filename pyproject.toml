@@ -1,13 +1,29 @@
-[build-system]
-requires = ["setuptools>=69.5.1", "wheel>=0.43.0"]
-build-backend = "setuptools.build_meta"
-
 [project]
-dependencies = [
-    "torch>=2.3.0",
-    "torchvision>=0.16.0",
-    "xformers",
-    "huggingface-hub>=0.25.0",
-    "diffusers>=0.31.0",
-    "protobuf>=4.25.3"
+name = "streamdiffusion"
+version = "1.0.0"
+description = "A real-time StreamDiffusion pipeline node for ComfyUI with integrated ControlNet, IPAdapter, and LoRA support."
+license = { file = "LICENSE" }
+requires-python = ">=3.10"
+dynamic = ["dependencies"]
+classifiers = [
+	"Operating System :: OS Independent",
+	"Environment :: GPU :: NVIDIA CUDA"
 ]
+authors = [{ name = "RUFFY-369", email = "prakarshkaushik369@gmail.com" }]
+
+[project.urls]
+Repository = "https://github.com/RUFFY-369/ComfyUI-StreamDiffusion"
+#  Used by Comfy Registry https://registry.comfy.org
+Documentation = "https://github.com/RUFFY-369/ComfyUI-StreamDiffusion#readme"
+"Bug Tracker" = "https://github.com/RUFFY-369/ComfyUI-StreamDiffusion/issues"
+
+[tool.comfy]
+PublisherId = "livepeer-comfystream"
+DisplayName = "ComfyUI-StreamDiffusion"
+Icon = "https://raw.githubusercontent.com/livepeer/comfystream-docs/main/logo/icon-light-120px.svg"
+# Banner = "https://raw.githubusercontent.com/username/repo/main/banner.png"
+requires-comfyui = ">=1.0.0"
+includes = []
+
+[tool.setuptools.dynamic]
+dependencies = {file = ["requirements.txt"]}
