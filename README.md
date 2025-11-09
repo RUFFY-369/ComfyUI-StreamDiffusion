@@ -34,7 +34,8 @@ After installation, launch ComfyUI. The StreamDiffusion node and its features wi
 
 1. **Build TensorRT Engines**
 	- Use the workflow: [`examples/sd15_tensorrt_engine_build.json`](examples/sd15_tensorrt_engine_build.json)
-	- This workflow demonstrates how to build TensorRT engines for your models.
+	- This workflow demonstrates how to build TensorRT engines for your models within ComfyUI.
+	- Alternatively, you can run the script [`scripts/build_tensorrt_engines.py`](scripts/build_tensorrt_engines.py) directly to build engines without using the ComfyUI workflow.
 
 2. **Inference with Streaming Sampler**
 	- Use the workflow: [`examples/sd15_all_dynamic_params_wlora.json`](examples/sd15_all_dynamic_params_wlora.json)
