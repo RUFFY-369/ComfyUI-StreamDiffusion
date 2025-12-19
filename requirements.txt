@@ -4,5 +4,5 @@ xformers
 huggingface-hub>=0.25.0
 diffusers>=0.31.0
 protobuf>=4.25.3
-streamdiffusion[tensorrt] @ git+https://github.com/RUFFY-369/StreamDiffusion.git@prakarsh/fix/comfyuiport
+streamdiffusion[tensorrt] @ git+https://github.com/muxionlabs/StreamDiffusion.git@prakarsh/fix/comfyuiport
 controlnet_aux
